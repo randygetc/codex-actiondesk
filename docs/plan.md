@@ -130,7 +130,7 @@ Implementation evidence:
 - Production dependency audit reports zero vulnerabilities. Development lint chain reports five related high-severity entries from unpatched `braces` advisory GHSA-vfj7-8cjw-p6xm. Track upstream rather than force-downgrading Next.js lint tooling.
 - Eval script/harness deferred to 2.2 and application CI workflow to 1.9. [Scaffold CI](https://github.com/randygetc/codex-actiondesk/actions/runs/37160278271) passed, including import and database checks. Owner merged [PR #4](https://github.com/randygetc/codex-actiondesk/pull/4) into main at `b038d45`.
 
-### 1.4 Prove guardrails — exercised; acceptance blocked by R2 gap
+### 1.4 Prove guardrails — all four failures proven; owner closure pending
 
 After scaffold merge, use a throwaway branch and separate commits for SDK-in-component, admin-in-action, public-table-without-RLS, and modifying the committed baseline migration. Check each revision independently so an earlier failure does not hide the next violation. Keep violations off the implementation branch; do not apply labels to mask failures.
 
@@ -149,7 +149,9 @@ Additional local proof: commit `f8487e3` on unpushed branch `test/guardrails-ser
 
 R2 diagnosis: dependency-cruiser's JSON graph reports module `openai` resolved to `node_modules/openai/index.d.ts`. Its `to.path` rule currently matches `^openai($|/)`, which misses the resolved dependency path. Owner repair proposal for locked `guardrails/dependency-cruiser.cjs`: match the actual resolved npm package path, e.g. `^node_modules/openai($|/)`, and verify root and subpath imports are rejected outside the approved boundary while the existing LLM import remains allowed. This restores the accepted R2 rule; no architectural exception or workflow bypass is proposed. The agent has not edited the locked configuration.
 
-Next gate: owner closes draft PRs #5–#8 without merging, fixes R2 on an owner-controlled branch, and merges the repair through required checks. Then repeat the isolated OpenAI violation against the repaired main and confirm the named R2 failure in CI. Step 1.4 remains incomplete until that evidence exists; do not begin 1.5 yet.
+Owner merged repair [PR #10](https://github.com/randygetc/codex-actiondesk/pull/10) at `8e1747a`. The existing legitimate LLM SDK import passes dependency-cruiser on repaired main. Replaying the original component fixture in commit `7dc196e` on a fresh branch produces the named `R2-openai-sdk-only-in-llm` failure locally and in [CI run 37162637975](https://github.com/randygetc/codex-actiondesk/actions/runs/37162637975), specifically in Import boundaries. [Draft PR #11](https://github.com/randygetc/codex-actiondesk/pull/11) contains this repeat probe and must never be merged. The owner repair closes the observed R2 gap; all four intended violations now have independent expected CI failure evidence.
+
+Next gate: owner closes draft PRs #5–#8 and #11 without merging. They were still open when checked after the repeat. Once closed, step 1.4 acceptance is complete and the next feature is 1.5 Google sign-in and profiles. Report PR #9 contains only documentation relative to repaired main; it is separate from all violation fixtures.
 
 ### 1.5 Google sign-in and profiles — not started
 
@@ -258,6 +260,6 @@ For every schema step: review ADRs and policy matrix; create a new migration wit
 
 - Completed: orientation, accepted OpenAI ADR/guardrails, owner-merged documentation/plan/CODEOWNERS, branch protection verification, approved dependencies, owner-merged scaffold with passing local and CI checks, four independent guardrail probes and local server-only build proof.
 - Owner deferred ADR 0007 until before Phase 3. Product defaults remain revisitable before their feature steps; no background-write exception has been accepted.
-- Next: owner closes probe draft PRs without merge and repairs the locked R2 package-path matcher; repeat the OpenAI probe in CI before accepting step 1.4 or starting 1.5. Steps 1.5–1.9 remain unstarted; fresh-session refusal exercise still needs evidence.
+- Next: owner closes probe draft PRs #5–#8 and #11 without merge, then proceeds to 1.5. Owner repair PR #10 is merged and repeat OpenAI probe #11 failed CI with the intended R2 rule. Steps 1.5–1.9 remain unstarted; fresh-session refusal exercise still needs evidence.
 - Checks/outcomes recorded under 1.3. No business data, authentication feature, remote deployment, or paid LLM calls added. Locked paths remain unchanged.
 - Scaffold PR #4 is merged. Probe PRs #5–#8 are deliberately unmergeable exercises, including unexpectedly green #5. Later sessions record actual checks/outcomes and changed assumptions; never mark an unrun check passed.
