@@ -6,15 +6,15 @@ Written by Claude Code in step 1.1. Editable. Must conform to docs/architecture.
 
 - Starter kit only: application source, package manifest, Supabase configuration, and application tests have not been scaffolded.
 - Phase 1 step 1.1 still needs a complete plan covering data model, RLS policies, routes, acceptance criteria, and tests.
-- The owner has selected OpenAI for application LLM features. This is a requested provider change, not yet an accepted architecture change.
+- OpenAI is the accepted application LLM provider under ADR 0006, merged in PR #1.
 
-## Owner-controlled prerequisite: OpenAI provider approval
+## OpenAI provider approval completed
 
-Before implementing OpenAI access, the owner must accept and commit ADR 0006 and update the locked files listed in `orientation/openai-provider-change.md`: `CLAUDE.md`, `docs/architecture.md`, the affected ADRs, and `guardrails/dependency-cruiser.cjs`.
+The owner accepted ADR 0006 and merged the architecture, project instruction, and SDK import guardrails updates in PR #1
 
-Until those changes are accepted, the current Anthropic-specific architecture remains authoritative. Do not install or integrate the OpenAI SDK to work around the existing rule.
+Implement against ADR 0006 while preserving all existing trust boundaries. Ask before adding dependencies.
 
-## Intended OpenAI integration after approval
+## Planned OpenAI integration
 
 - Use the official `openai` TypeScript SDK and Responses API through `src/lib/llm/**`; approved Edge Functions may call OpenAI for background jobs.
 - Keep `OPENAI_API_KEY` server-side and require `server-only` in application LLM modules.

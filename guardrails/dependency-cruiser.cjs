@@ -21,7 +21,7 @@ module.exports = {
     },
     {
       name: 'R6-no-server-code-in-components',
-      comment: 'ADR-0002/0004: components never import the LLM module or admin code.',
+      comment: 'ADR-0006/0004: components never import the LLM module or admin code.',
       severity: 'error',
       from: { path: '^src/components/' },
       to: { path: '^src/lib/(llm|admin)/|^src/lib/supabase/admin\\.ts$' },
@@ -37,7 +37,7 @@ module.exports = {
   required: [
     {
       name: 'server-only-in-llm-and-admin',
-      comment: 'ADR-0002: server modules must import "server-only" so the Next.js build fails if a client component pulls them in.',
+      comment: 'ADR-0006: server modules must import "server-only" so the Next.js build fails if a client component pulls them in.',
       severity: 'error',
       module: {
         path: '^src/lib/(llm|admin)/[^/]+\\.ts$|^src/lib/supabase/admin\\.ts$',

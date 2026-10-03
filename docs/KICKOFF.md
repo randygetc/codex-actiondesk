@@ -1,7 +1,7 @@
 # ActionDesk — Kickoff Guide for Claude Code
 
-> **Provider change pending owner acceptance:** The owner has selected OpenAI for ActionDesk's application LLM features. OpenAI-specific steps below describe the intended implementation and must wait until the owner accepts ADR 0006 and updates the locked architecture, instructions, and SDK import guardrail. The current accepted rules still specify Anthropic. See `orientation/openai-provider-change.md` for the proposal.
->
+> Provider change accepted: ADR 0006 establishes OpenAI as ActionDesk’s application LLM provider. The architecture, project instructions, and SDK import guardrail have been updated.
+
 > Claude Code references describe the starter kit's development tooling, not the application's LLM provider. Its `.claude/` permissions, hooks, and slash commands do not automatically run in Codex. When using Codex, follow the repository rules and documented workflows without assuming those runtime protections exist.
 
 **What it is:** paste meeting notes or emails → OpenAI models extract action items → you review and save them as tasks → later, ask questions about your work ("what's overdue for the Manila client?").
@@ -48,7 +48,7 @@ claude          # always launch from the repo root so the deny rules resolve
 |---|---|---|
 | CLAUDE.md + architecture.md | Everything, as instructions | Yes, advisory |
 | `.claude/settings.json` deny rules | Claude editing locked files, merging PRs, pushing to main, changing labels | Via shell tricks |
-| dependency-cruiser (CI) | Anthropic SDK outside `src/lib/llm/` (current rule; owner must replace it with the OpenAI SDK restriction), admin client outside `src/lib/admin/`, server code in components | No |
+| dependency-cruiser (CI) | OpenAI SDK outside `src/lib/llm/`, admin client outside `src/lib/admin/`, server code in components | No |
 | `000_rls_enabled.test.sql` (CI) | Any public table or view without RLS | No |
 | `guardrails/check.sh` (CI) | Modified migrations; locked paths changed without the `architecture-approved` label | No |
 | Branch protection | Anything reaching `main` without green CI and your merge | No |
