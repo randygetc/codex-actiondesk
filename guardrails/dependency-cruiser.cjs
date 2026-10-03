@@ -6,11 +6,11 @@
 module.exports = {
   forbidden: [
     {
-      name: 'R2-anthropic-sdk-only-in-llm',
-      comment: 'ADR-0002: the Anthropic SDK may only be imported in src/lib/llm/.',
+      name: 'R2-openai-sdk-only-in-llm',
+      comment: 'ADR-0006: the openAI SDK may only be imported in src/lib/llm/.',
       severity: 'error',
       from: { pathNot: '^src/lib/llm/' },
-      to: { path: '@anthropic-ai/sdk' },
+      to: { path: '^openai($|/)' },
     },
     {
       name: 'R3-admin-client-restricted',

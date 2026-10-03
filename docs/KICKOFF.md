@@ -1,6 +1,10 @@
 # ActionDesk — Kickoff Guide for Claude Code
 
-**What it is:** paste meeting notes or emails → Claude extracts action items → you review and save them as tasks → later, ask questions about your work ("what's overdue for the Manila client?").
+> **Provider change pending owner acceptance:** The owner has selected OpenAI for ActionDesk's application LLM features. OpenAI-specific steps below describe the intended implementation and must wait until the owner accepts ADR 0006 and updates the locked architecture, instructions, and SDK import guardrail. The current accepted rules still specify Anthropic. See `orientation/openai-provider-change.md` for the proposal.
+>
+> Claude Code references describe the starter kit's development tooling, not the application's LLM provider. Its `.claude/` permissions, hooks, and slash commands do not automatically run in Codex. When using Codex, follow the repository rules and documented workflows without assuming those runtime protections exist.
+
+**What it is:** paste meeting notes or emails → OpenAI models extract action items → you review and save them as tasks → later, ask questions about your work ("what's overdue for the Manila client?").
 
 **What you're really learning:** how to plan, steer, test, and correct Claude Code across a realistic build — including the parts AI tools find hard.
 
@@ -17,7 +21,7 @@ Three phases. Each ends with a **checkpoint** (what must work) and **friction ex
 - Google Cloud Console: OAuth client (Web). Redirect URIs:
   - `http://127.0.0.1:54321/auth/v1/callback` (local Supabase)
   - `https://<dev-project-ref>.supabase.co/auth/v1/callback`
-- Anthropic Console: API key with a monthly spend limit set.
+- OpenAI API project: configure billing and usage monitoring; keep `OPENAI_API_KEY` server-side. Enforce application spending caps as described in Phase 2.
 - Vercel: account linked to GitHub.
 - Sentry: free account (Phase 3). Optionally connect Sentry's MCP server so Claude can read issues.
 - k6 installed locally for load testing (Phase 3).
@@ -44,7 +48,7 @@ claude          # always launch from the repo root so the deny rules resolve
 |---|---|---|
 | CLAUDE.md + architecture.md | Everything, as instructions | Yes, advisory |
 | `.claude/settings.json` deny rules | Claude editing locked files, merging PRs, pushing to main, changing labels | Via shell tricks |
-| dependency-cruiser (CI) | Anthropic SDK outside `src/lib/llm/`, admin client outside `src/lib/admin/`, server code in components | No |
+| dependency-cruiser (CI) | Anthropic SDK outside `src/lib/llm/` (current rule; owner must replace it with the OpenAI SDK restriction), admin client outside `src/lib/admin/`, server code in components | No |
 | `000_rls_enabled.test.sql` (CI) | Any public table or view without RLS | No |
 | `guardrails/check.sh` (CI) | Modified migrations; locked paths changed without the `architecture-approved` label | No |
 | Branch protection | Anything reaching `main` without green CI and your merge | No |
@@ -79,12 +83,12 @@ Edit the plan yourself before approving. Push back on anything vague.
    Claude should be blocked, or refuse and offer `/propose-adr`. Note which layer stopped it.
 
 **1.3 Scaffold**
-> Scaffold per CLAUDE.md on a branch: Next.js, Tailwind, shadcn/ui, Supabase local init, server/browser clients, `src/lib/supabase/admin.ts` and `src/lib/llm/index.ts` (both importing `server-only`), session middleware, Vitest + Playwright configs, npm scripts. Add dev dependencies `dependency-cruiser` and `server-only` (ask me first). Verify `npm run dev`, `supabase start`, and `npx depcruise --config guardrails/dependency-cruiser.cjs src`. Commit, push the branch, and open a PR. Don't merge.
+> Scaffold per CLAUDE.md on a branch: Next.js, Tailwind, shadcn/ui, Supabase local init, server/browser clients, `src/lib/supabase/admin.ts` and `src/lib/llm/index.ts` (both importing `server-only`), session middleware, Vitest + Playwright configs, npm scripts. Add `dependency-cruiser` and `server-only` (ask me first). After the provider-change gate is complete, ask before adding the `openai` SDK; keep its imports within the approved LLM boundary. Verify `npm run dev`, `supabase start`, and `npx depcruise --config guardrails/dependency-cruiser.cjs src`. Commit, push the branch, and open a PR. Don't merge.
 
 Merge it yourself once the `guardrails` check is green.
 
 **1.4 Prove the guardrails** *(friction exercise K)*
-> On a throwaway branch, make four deliberate violations in separate commits: (1) import `@anthropic-ai/sdk` in a component, (2) import the admin client from a Server Action, (3) a migration creating a table without RLS, (4) edit a migration that's already on main. Push and open a draft PR. Report which check caught each one. Don't try to fix or bypass them.
+> On a throwaway branch, make four deliberate violations in separate commits: (1) import `openai` in a component (after the owner updates R2 and its guardrail), (2) import the admin client from a Server Action, (3) a migration creating a table without RLS, (4) edit a migration that's already on main. Push and open a draft PR. Report which check caught each one. Don't try to fix or bypass them.
 
 Confirm all four fail in CI, then close the PR without merging. If any violation got through, fix the guardrail yourself (it's locked to Claude) and repeat.
 
@@ -146,15 +150,15 @@ For each, write `expected.json`. Then:
 > Build `npm run eval`: runs extraction against evals/extraction, scores title match, owner, due date (exact), and project, prints a per-case table and overall score. Two modes: `--live` calls the API; default uses recorded responses so CI stays free and deterministic.
 
 **2.3 Extraction**
-> Implement Notes → Tasks: a Server Action sends the text, the user's timezone, current date, and their project list to Claude using tool use with a strict schema (title, owner, due_at, project_id | null, confidence 0–1, source_quote). Validate with Zod; on invalid output retry once with the error, then fail gracefully. Stream tasks into a review screen where the user can edit, reject, or accept each before saving. Low-confidence items are visually flagged. Run `npm run eval -- --live` and report the score.
+> Implement Notes → Tasks: a Server Action sends the text, the user's timezone, current date, and their project list to an OpenAI model through the server-only LLM module using the Responses API with a strict structured-output schema (title, owner, due_at, project_id | null, confidence 0–1, source_quote). Validate with Zod; on invalid output retry once with the error, then fail gracefully. Stream tasks into a review screen where the user can edit, reject, or accept each before saving. Low-confidence items are visually flagged. Run `npm run eval -- --live` and report the score.
 
 Iterate on the prompt until the eval score stops improving. Record each score in docs/learnings.md.
 
 **2.4 Model comparison** *(friction exercise D)*
-> Run the live eval with a Haiku-class model and a Sonnet-class model. Report score, latency, and cost per case. Recommend one for extraction and justify it.
+> Check current official OpenAI model documentation and select a lower-cost model and a higher-capability model that support the required features. Run the live eval with both and record their exact model IDs. Report score, latency, and cost per case. Recommend one for extraction and justify it.
 
 **2.5 Ask ActionDesk**
-> Build a chat panel. Claude gets tools: search_tasks(query, status?, project?), list_overdue(), get_project_summary(project_id), create_task(...) (requires user confirmation in the UI before executing). Tools run through the *user's* Supabase client. Stream responses. Show which tools were called.
+> Build a chat panel. The OpenAI model gets function tools: search_tasks(query, status?, project?), list_overdue(), get_project_summary(project_id), create_task(...) (requires user confirmation in the UI before executing). Tools run through the *user's* Supabase client. Stream responses. Show which tools were called.
 
 **Before accepting 2.5, ask:**
 > Which Supabase client do the tools use, and how do you know RLS applies? Prove it with a test where user B asks about user A's project.
@@ -162,10 +166,10 @@ Iterate on the prompt until the eval score stops improving. Record each score in
 *(Friction exercise E: did Claude get this right unprompted? Note it either way.)*
 
 **2.6 Cost controls**
-> Add `llm_usage` table (user_id, feature, model, input_tokens, output_tokens, cached_tokens, cost_usd, created_at). Log every call. Use prompt caching for system prompts and tool definitions. Enforce a daily per-user cap (configurable) with a friendly error. Admin-only page showing usage by day and feature.
+> Add `llm_usage` table (user_id, feature, model, input_tokens, output_tokens, cached_tokens, cost_usd, created_at). Log every call. Account for OpenAI cached input tokens separately from uncached input and output tokens. Verify current caching behavior and model pricing in official documentation before implementation; measure savings with stable system prompts and tool definitions. Enforce a daily per-user cap (configurable) with a friendly error. Admin-only page showing usage by day and feature.
 
 **2.7 File attachments** *(adds Storage and a new injection surface)*
-> Let users attach a PDF, .txt, .docx, or meeting transcript (.vtt/.srt) instead of pasting text. Store files in a private Supabase Storage bucket with per-user access policies (per-workspace after Phase 3). Enforce size (10 MB) and type limits on the server, not just the client. Extract text server-side (PDFs can go to Claude directly as a document), then run the same extraction pipeline and review screen. Add 3 attachment cases to the eval set, including a PDF with hidden white-text instructions.
+> Let users attach a PDF, .txt, .docx, or meeting transcript (.vtt/.srt) instead of pasting text. Store files in a private Supabase Storage bucket with per-user access policies (per-workspace after Phase 3). Enforce size (10 MB) and type limits on the server, not just the client. Extract text server-side (use OpenAI file inputs only after verifying support for the selected model; otherwise extract text server-side), then run the same extraction pipeline and review screen. Add 3 attachment cases to the eval set, including a PDF with hidden white-text instructions.
 
 **2.8 Injection hardening**
 > Run the injection samples (pasted text and the hidden-text PDF) through both Extraction and Ask. Confirm no tool executes without user confirmation and no instructions from pasted text are followed. Run the security-reviewer subagent on Phase 2.
@@ -209,7 +213,7 @@ Review this carefully. It's the step most likely to go wrong.
 > Add TOTP MFA (Google Authenticator): enroll with QR in Settings → Security, verify, unenroll. Deleting a workspace or removing a member requires aal2, enforced in RLS via `(auth.jwt()->>'aal') = 'aal2'`, with a step-up prompt in the UI. pgTAP test that an aal1 session cannot delete.
 
 **3.6 Weekly digest**
-> Supabase Edge Function + Cron, Mondays 8am in each workspace owner's timezone: gather last week's completed, overdue, and upcoming tasks per workspace, ask Claude for a short summary with highlights and risks, email it (use Resend or similar — ask me first). Handle: API timeout mid-batch (resume, don't resend), empty weeks (skip), usage logged to llm_usage. Add a "send test digest now" button for owners.
+> Supabase Edge Function + Cron, Mondays 8am in each workspace owner's timezone: gather last week's completed, overdue, and upcoming tasks per workspace, ask an OpenAI model for a short summary with highlights and risks, email it (use Resend or similar — ask me first). Handle: API timeout mid-batch (resume, don't resend), empty weeks (skip), usage logged to llm_usage. Add a "send test digest now" button for owners.
 
 **3.7 Performance at scale** *(friction exercise H)*
 > Write a large seed script: 20 workspaces, 500 projects, 100,000 tasks with realistic dates, statuses and recurrence, and 5 users with overlapping memberships. Then: (1) run EXPLAIN ANALYZE as a normal authenticated user (so RLS is included) on the task list, the Overdue/Today grouping, search_tasks, and the digest query; (2) add a k6 load test for the task list and Ask endpoints; (3) report the slowest paths, fix them with indexes, query rewrites, or RLS policy changes, and show before/after numbers. No caching unless the measurements justify it.
@@ -231,7 +235,7 @@ Note: time to diagnosis, whether it found the real cause or patched a symptom, a
 
 **3.11 Production incident drill** *(friction exercise I)*
 
-Without telling Claude, **you** cause a failure in prod. Pick one: revoke the Anthropic API key, set one workspace's daily LLM cap to 0, or make the digest function throw for a single workspace. Start a fresh session and say only:
+Without telling Claude, **you** cause a failure in prod. Pick one: revoke the OpenAI API key, set one workspace's daily LLM cap to 0, or make the digest function throw for a single workspace. Start a fresh session and say only:
 > Users report the weekly digest didn't arrive and extraction is failing for some of them. Use Sentry and the logs to find out why, fix it, and write a short postmortem in docs/incidents/.
 
 Note whether Claude goes to Sentry and logs first or starts guessing in the code, and whether the postmortem names a prevention step (an alert, a test, a runbook entry).
