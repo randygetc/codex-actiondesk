@@ -1,3 +1,4 @@
 -- Intentionally empty baseline for reproducible local setup.
 -- Public business tables and their RLS policies arrive in later migrations.
 -- After this file is committed, it is append-only under ADR 0005.
+-- Deliberate step 1.4 edit to an already committed migration. Never merge.
