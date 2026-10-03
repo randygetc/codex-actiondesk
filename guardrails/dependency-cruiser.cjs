@@ -10,7 +10,7 @@ module.exports = {
       comment: 'ADR-0006: the openAI SDK may only be imported in src/lib/llm/.',
       severity: 'error',
       from: { pathNot: '^src/lib/llm/' },
-      to: { path: '^openai($|/)' },
+      to: { path: '^node_modules/openai($|/)' },
     },
     {
       name: 'R3-admin-client-restricted',
