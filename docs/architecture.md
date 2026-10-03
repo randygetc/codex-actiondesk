@@ -49,7 +49,7 @@ supabase/tests/          pgTAP
 | # | Rule | ADR |
 |---|---|---|
 | R1 | Every public table has RLS enabled, with tested policies | 0001 |
-| R2 | OpenAI SDK imported only in `src/lib/llm/**` and `supabase/functions/**` | 0002 |
+| R2 | OpenAI SDK imported only in `src/lib/llm/**` and `supabase/functions/**` | 0006 |
 | R3 | `src/lib/supabase/admin.ts` imported only from `src/lib/admin/**` and `supabase/functions/**` | 0001, 0003 |
 | R4 | LLM tools query with the user-scoped client; write tools need UI confirmation | 0003 |
 | R5 | Mutations only via Server Actions with Zod validation; LLM output validated the same way | 0004 |
@@ -64,12 +64,11 @@ Rules only count if something checks them. Instructions alone are not enforcemen
 |---|---|---|
 | `CLAUDE.md` + this doc | All rules, as instructions | Yes — advisory only |
 | `.claude/settings.json` deny rules | No edits to CLAUDE.md, this doc, ADRs, `.claude/`, CODEOWNERS, the RLS-coverage test | Only via shell tricks; caught by CI/CODEOWNERS |
-| `.claude/hooks/protect-migrations.sh` | R7 during the session | Only via shell tricks; caught by CI |
-| ESLint `no-restricted-imports` | R2, R3 | No — CI fails |
-| dependency-cruiser | R6 | No — CI fails |
+| .claude/hooks/guard.sh (currently missing) | Intended in-session protection for locked files and committed migrations | Not active until configured; Claude Code only |
+| dependency-cruiser | R2, R3, component import boundaries, and required server-only imports | CI fails when scaffold prerequisites exist |
 | `supabase/tests/000_rls_enabled.test.sql` | R1 (RLS switched on) | No — CI fails |
 | Per-table pgTAP tests | R1 (policies correct), R4 | No — CI fails |
-| `scripts/check-migrations.sh` in CI | R7 (diff against `main` shows no modified migrations) | No — CI fails |
+| `guardrails/check.sh` in CI | R7 (diff against `main` shows no modified migrations) | No — CI fails |
 | Branch protection + only you merge | Nothing reaches `main` without green CI and your decision | No |
 
 ## 7. Changing the architecture

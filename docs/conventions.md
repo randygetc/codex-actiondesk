@@ -8,7 +8,7 @@ propose an ADR instead.
 
 ## Provider changes
 
-Application LLM provider choices are separate from the coding assistant used to develop the repository. OpenAI is the owner's requested application provider; implementation is pending owner acceptance of the architecture change described in `orientation/openai-provider-change.md`. Conventions and editable plans do not override the locked architecture or accepted ADRs.
+Application LLM provider choices are separate from the coding assistant used to develop the repository. OpenAI is the accepted application provider under ADR 0006; Conventions and editable plans do not override the locked architecture or accepted ADRs.
 
 Keep provider-specific request handling, response parsing, usage accounting, and model configuration inside the approved LLM module boundary. Verify API capabilities and model IDs against current official provider documentation before implementation.
 
