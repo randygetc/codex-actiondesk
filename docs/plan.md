@@ -1,14 +1,14 @@
 # ActionDesk implementation plan
 
-Updated: 2026-10-03. Status: step 1.1 draft ready for owner review; implementation has not started.
+Updated: 2026-10-03. Status: plan merged in PR #3; step 1.3 scaffold implemented, awaiting PR checks and owner merge.
 
 ## Current state and authority
 
-- Local `main` contains merged PRs #1 and #2. Accepted ADR 0006 establishes OpenAI and supersedes ADR 0002.
-- No application source, package manifest, Supabase configuration, migrations, or application tests exist yet.
+- The scaffold branch starts from merged PRs #1–#3. Accepted ADR 0006 establishes OpenAI and supersedes ADR 0002.
+- Scaffold now contains Next.js App Router source, approved dependency manifest/lockfile, local Supabase configuration, empty baseline migration, generated types, and unit/browser tests. Business tables/features remain unimplemented.
 - Phase 1 is detailed below; Phases 2–3 require expanded plans at their kickoff planning steps.
 - Locked architecture and accepted ADRs govern implementation. This plan does not authorize architectural exceptions, dependency installation, production commands, or edits to locked paths.
-- Only planning is authorized for this task. Account setup and remote branch protection are unverified unless separately evidenced.
+- Owner authorized step 1.3 and approved scaffold dependencies. Branch protections were verified remotely; remaining account setup is unverified unless separately evidenced.
 
 ## Invariants across all phases
 
@@ -45,9 +45,9 @@ These are proposed product defaults for review, not completed configuration.
 
 Owner setup still to verify:
 
-- Replace the placeholder in locked `.github/CODEOWNERS`; it remains in the current checkout.
-- Verify the approval label, PR requirement, required `guardrails` check, and blocked force pushes on GitHub. Add required `ci` after 1.9. Merged PRs alone do not prove branch settings.
-- If using Claude Code, supply the missing guard hook or remove its configured hook as owner. Codex does not automatically execute `.claude/` hooks, permissions, or slash commands.
+- CODEOWNERS placeholder replaced by owner and merged in PR #3. Email ownership depends on association with the owner's GitHub account.
+- Verified via GitHub API: PR required, zero solo approvals, required `guardrails` from GitHub Actions, up-to-date branch required, admin bypass disabled, force pushes/deletion blocked. Add required `ci` after 1.9. Approval label was used for merged architecture PRs.
+- Owner uses only Codex: missing Claude hook is not a setup blocker. Codex does not automatically execute `.claude/` hooks, permissions, or slash commands.
 - Confirm Node, Docker, Supabase CLI, local ports, dev Supabase project, Google OAuth redirects, and Vercel access. Never put actual secrets in tracked files.
 - Confirm OpenAI project/billing before Phase 2. Development-agent access is separate from application API access.
 - Approve dependency additions per step, including scaffold, Supabase/Zod, `server-only`, dependency-cruiser, tests, and later date/recurrence libraries and OpenAI SDK. Resolve versions at implementation time.
@@ -105,19 +105,30 @@ Policy matrix: owner allowed; other user and anonymous denied; forged owner and 
 
 Scope: this document and the proposed ADR. Acceptance: every kickoff step has scope and observable criteria, Phase 1 includes schema/policies/routes/tests, and exceptions are explicit gates. Owner reviews product defaults and open decisions. No application or database changes.
 
-### 1.2 Architecture setup — partly complete, owner-controlled
+### 1.2 Architecture setup — owner configuration verified; refusal exercise pending
 
 OpenAI acceptance and documentation cleanup are merged. Owner resolves setup gates and accepts or defers ADR 0007. Run the kickoff refusal exercise in a fresh session: the agent must refuse a request to allow admin LLM tools and propose an ADR without editing locked files.
 
 Acceptance: real CODEOWNERS identity, evidence of required checks/settings, and refusal exercise outcome recorded here. Do not repeat the historical first direct push to `main`; use the established PR process.
 
-### 1.3 Scaffold — not started
+### 1.3 Scaffold — implemented, pending PR checks and owner merge
 
 After dependency approval, create Next.js App Router/strict TypeScript, Tailwind/shadcn UI, local Supabase, user/browser clients, flat server-only admin/LLM entry modules, session refresh integration, logger, Vitest, and Playwright. Inspect installed Next.js local docs before framework coding as AGENTS.md requires; use supported APIs rather than assuming historical middleware conventions.
 
 Add environment template with names only, ignore real secrets, npm dev/build/lint/typecheck/unit/e2e scripts, and lockfile/tsconfig/Supabase config so existing CI checks activate. Add eval script only with its actual harness. Prepare a harmless committed baseline migration, for example a setup-comment-only migration, to let 1.4 test edits to an existing migration before business tables exist.
 
 Acceptance: app and local Supabase start, lint/typecheck/build and meaningful initial smoke tests pass, dependency-cruiser resolves and passes, CI import/database steps run rather than skip, and browser build has no privileged keys. Open scaffold PR; owner merges. No production linking or paid calls.
+
+Implementation evidence:
+
+- Next.js 16.3.8/React 19 App Router, strict TypeScript, Tailwind 4, shadcn configuration, scoped Supabase clients, lazy OpenAI/admin constructors, session-refresh Proxy, allowlisted logger, and test configs are present.
+- Local Supabase starts on isolated ports 55320–55329; no unrelated stack was stopped. Generated types reflect an empty business schema; comment-only baseline migration is ready for the step 1.4 append-only proof after merge.
+- Lint and typecheck pass; 11 unit tests validate public configuration, cookie/cache-header propagation including repeated cookie writes, `getUser()` usage, and log redaction.
+- Locked dependency-cruiser passes; existing pgTAP RLS test passes both assertions. With no business tables yet, this proves the test harness, not future ownership policies.
+- Webpack production build passes and Chromium production smoke test passes. Development server starts and homepage returns HTTP 200. No OpenAI credentials or paid calls needed.
+- Turbopack's PostCSS listener fails with EPERM even after escalation; select Next.js's supported Webpack dev/build mode without disabling build/type checks.
+- Production dependency audit reports zero vulnerabilities. Development lint chain reports five related high-severity entries from unpatched `braces` advisory GHSA-vfj7-8cjw-p6xm. Track upstream rather than force-downgrading Next.js lint tooling.
+- Eval script/harness deferred to 2.2 and application CI workflow to 1.9. Existing locked guardrails CI must run its import/database steps on this scaffold PR; runtime results remain pending until observed.
 
 ### 1.4 Prove guardrails — not started
 
@@ -230,8 +241,8 @@ For every schema step: review ADRs and policy matrix; create a new migration wit
 
 ## Session handoff
 
-- Completed: orientation, accepted OpenAI ADR/guardrail updates, owner-merged docs cleanup, step 1.1 plan draft.
-- Owner review: product defaults, single-user transition interpretation, proposed ADR 0007, setup evidence.
-- Next after review: remaining 1.2 owner gates, dependency approval, then 1.3 scaffold. All implementation steps remain unstarted.
-- Validation for this task: documentation review against kickoff, R1–R7, and accepted ADRs; diff/whitespace checks. No runtime tests exist, dependencies installed, migrations run, or application code written.
-- Commit/push only when requested for this planning task. Later sessions record actual checks/outcomes and changed assumptions; never mark an unrun check passed.
+- Completed: orientation, accepted OpenAI ADR/guardrails, owner-merged documentation/plan/CODEOWNERS, branch protection verification, approved dependencies, local scaffold and checks.
+- Owner deferred ADR 0007 until before Phase 3. Product defaults remain revisitable before their feature steps; no background-write exception has been accepted.
+- Next: observe scaffold PR guardrails, owner review/merge, then step 1.4 deliberate violation exercise on an isolated branch. Steps 1.5–1.9 remain unstarted; fresh-session refusal exercise still needs evidence.
+- Checks/outcomes recorded under 1.3. No business data, authentication feature, remote deployment, or paid LLM calls added. Locked paths remain unchanged.
+- One scaffold commit/PR under step 1.3 authorization; owner merges. Later sessions record actual checks/outcomes and changed assumptions; never mark an unrun check passed.

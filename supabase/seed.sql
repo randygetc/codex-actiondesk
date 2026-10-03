@@ -1,0 +1,1 @@
+-- No application data in the scaffold. Local auth fixtures arrive with step 1.5.
