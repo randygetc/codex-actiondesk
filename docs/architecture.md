@@ -8,11 +8,11 @@ Three tiers. Each tier assumes the one above it might be wrong.
 
 | Tier | Runs on | Owns | Must never |
 |---|---|---|---|
-| Browser | User's device | Rendering, local UI state, Realtime subscriptions | Hold the service role key or Anthropic key; make authorization decisions |
+| Browser | User's device | Rendering, local UI state, Realtime subscriptions | Hold the service role key or OpenAI key; make authorization decisions |
 | Next.js server | Vercel | Server Actions (validated mutations), LLM service, session middleware | Use the admin client in a user request path; trust client input or LLM output unvalidated |
 | Supabase | Supabase | Data, authorization (RLS), identity (Auth), files (Storage), scheduled jobs (Edge Functions + Cron) | Contain a public table without RLS |
 
-External services: Anthropic API (called only from the server tier and Edge Functions), Sentry, email provider.
+External services: OpenAI API (called only from the server tier and Edge Functions), Sentry, email provider.
 
 ## 2. Trust boundaries
 
@@ -37,10 +37,10 @@ src/lib/supabase/
   server.ts              user-scoped server client     ← default everywhere
   client.ts              browser client
   admin.ts               service-role client           ← restricted (see §5)
-src/lib/llm/             the only place the Anthropic SDK is imported (server)
+src/lib/llm/             the only place the OpenAI SDK is imported (server)
 src/lib/validation/      Zod schemas shared by actions and LLM output
 supabase/migrations/     append-only
-supabase/functions/      Edge Functions (Deno); may use admin client and Anthropic SDK
+supabase/functions/      Edge Functions (Deno); may use admin client and OpenAI SDK
 supabase/tests/          pgTAP
 ```
 
@@ -49,11 +49,11 @@ supabase/tests/          pgTAP
 | # | Rule | ADR |
 |---|---|---|
 | R1 | Every public table has RLS enabled, with tested policies | 0001 |
-| R2 | Anthropic SDK imported only in `src/lib/llm/**` and `supabase/functions/**` | 0002 |
+| R2 | OpenAI SDK imported only in `src/lib/llm/**` and `supabase/functions/**` | 0002 |
 | R3 | `src/lib/supabase/admin.ts` imported only from `src/lib/admin/**` and `supabase/functions/**` | 0001, 0003 |
 | R4 | LLM tools query with the user-scoped client; write tools need UI confirmation | 0003 |
 | R5 | Mutations only via Server Actions with Zod validation; LLM output validated the same way | 0004 |
-| R6 | Browser code (`"use client"` modules, `src/components/**`) never imports from `src/lib/llm/**`, `src/lib/supabase/admin.ts`, or `server-only` modules | 0002, 0004 |
+| R6 | Browser code (`"use client"` modules, `src/components/**`) never imports from `src/lib/llm/**`, `src/lib/supabase/admin.ts`, or `server-only` modules | 0006, 0004 |
 | R7 | Committed migration files are never modified; changes go in new migrations | 0005 |
 
 ## 6. Enforcement

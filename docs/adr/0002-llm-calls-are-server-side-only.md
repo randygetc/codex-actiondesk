@@ -1,6 +1,6 @@
 # 0002. LLM calls are server-side only, through one module
 
-- **Status:** Accepted
+- **Status:** Superseded by 0006
 - **Date:** 2026-09-28
 
 ## Context
