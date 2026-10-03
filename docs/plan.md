@@ -111,7 +111,7 @@ OpenAI acceptance and documentation cleanup are merged. Owner resolves setup gat
 
 Acceptance: real CODEOWNERS identity, evidence of required checks/settings, and refusal exercise outcome recorded here. Do not repeat the historical first direct push to `main`; use the established PR process.
 
-### 1.3 Scaffold — implemented, pending PR checks and owner merge
+### 1.3 Scaffold — complete, owner merged PR #4
 
 After dependency approval, create Next.js App Router/strict TypeScript, Tailwind/shadcn UI, local Supabase, user/browser clients, flat server-only admin/LLM entry modules, session refresh integration, logger, Vitest, and Playwright. Inspect installed Next.js local docs before framework coding as AGENTS.md requires; use supported APIs rather than assuming historical middleware conventions.
 
@@ -128,13 +128,30 @@ Implementation evidence:
 - Webpack production build passes and Chromium production smoke test passes. Development server starts and homepage returns HTTP 200. No OpenAI credentials or paid calls needed.
 - Turbopack's PostCSS listener fails with EPERM even after escalation; select Next.js's supported Webpack dev/build mode without disabling build/type checks.
 - Production dependency audit reports zero vulnerabilities. Development lint chain reports five related high-severity entries from unpatched `braces` advisory GHSA-vfj7-8cjw-p6xm. Track upstream rather than force-downgrading Next.js lint tooling.
-- Eval script/harness deferred to 2.2 and application CI workflow to 1.9. Existing locked guardrails CI must run its import/database steps on this scaffold PR; runtime results remain pending until observed.
+- Eval script/harness deferred to 2.2 and application CI workflow to 1.9. [Scaffold CI](https://github.com/randygetc/codex-actiondesk/actions/runs/37160278271) passed, including import and database checks. Owner merged [PR #4](https://github.com/randygetc/codex-actiondesk/pull/4) into main at `b038d45`.
 
-### 1.4 Prove guardrails — not started
+### 1.4 Prove guardrails — all four failures proven; owner closure pending
 
 After scaffold merge, use a throwaway branch and separate commits for SDK-in-component, admin-in-action, public-table-without-RLS, and modifying the committed baseline migration. Check each revision independently so an earlier failure does not hide the next violation. Keep violations off the implementation branch; do not apply labels to mask failures.
 
 Acceptance: record each commit and expected check failure: R2 import rule, R3 import rule, pgTAP RLS coverage, migration diff. A tool crash or unrelated red job is not proof. Also prove a client importing the server-only LLM entry fails the framework build. Owner closes draft PR without merge. If a violation passes, owner fixes locked guardrails and repeats before feature work.
+
+Observed on 2026-10-03 against merged scaffold `b038d45`. Four independent throwaway branches, each based on main, avoid an earlier failed workflow step hiding a later violation. Draft PRs contain only their deliberate violation; none is suitable for merging.
+
+| Probe | Commit / draft PR | Observed CI result | Evidence |
+| --- | --- | --- | --- |
+| Component imports OpenAI SDK | `b6247c9`, [#5](https://github.com/randygetc/codex-actiondesk/pull/5) | **Unexpected success**: R2 did not catch the import; every CI step ran and passed | [Run](https://github.com/randygetc/codex-actiondesk/actions/runs/37160925174) |
+| Server Action imports admin client | `2e99525`, [#6](https://github.com/randygetc/codex-actiondesk/pull/6) | Expected failure in Import boundaries: `R3-admin-client-restricted`, action → admin module | [Run](https://github.com/randygetc/codex-actiondesk/actions/runs/37160941274) |
+| New public table without RLS | `9135fcf`, [#7](https://github.com/randygetc/codex-actiondesk/pull/7) | Expected pgTAP failure: public tables must have RLS; unexpected record `guardrail_missing_rls_probe` | [Run](https://github.com/randygetc/codex-actiondesk/actions/runs/37160973068) |
+| Edit baseline migration already on main | `5bdfd3f`, [#8](https://github.com/randygetc/codex-actiondesk/pull/8) | Expected failure in Locked paths and append-only migrations: committed migration modified | [Run](https://github.com/randygetc/codex-actiondesk/actions/runs/37160986737) |
+
+Additional local proof: commit `f8487e3` on unpushed branch `test/guardrails-server-only-build` adds a client page importing `src/lib/llm`. `npm run build` exits 1 with the compiler's `server-only` error and an import trace from the page to the LLM module. The initial sandbox invocation failed before compilation; the escalated run reached the intended boundary error. No constructors were invoked, API calls made, or normal local database migrations applied. The normal documentation branch contains none of these fixtures. Stale ignored `.next` artifacts from the failed build were moved to `/tmp/actiondesk-next-guardrail-proof-20261003` before clean-branch checks.
+
+R2 diagnosis: dependency-cruiser's JSON graph reports module `openai` resolved to `node_modules/openai/index.d.ts`. Its `to.path` rule currently matches `^openai($|/)`, which misses the resolved dependency path. Owner repair proposal for locked `guardrails/dependency-cruiser.cjs`: match the actual resolved npm package path, e.g. `^node_modules/openai($|/)`, and verify root and subpath imports are rejected outside the approved boundary while the existing LLM import remains allowed. This restores the accepted R2 rule; no architectural exception or workflow bypass is proposed. The agent has not edited the locked configuration.
+
+Owner merged repair [PR #10](https://github.com/randygetc/codex-actiondesk/pull/10) at `8e1747a`. The existing legitimate LLM SDK import passes dependency-cruiser on repaired main. Replaying the original component fixture in commit `7dc196e` on a fresh branch produces the named `R2-openai-sdk-only-in-llm` failure locally and in [CI run 37162637975](https://github.com/randygetc/codex-actiondesk/actions/runs/37162637975), specifically in Import boundaries. [Draft PR #11](https://github.com/randygetc/codex-actiondesk/pull/11) contains this repeat probe and must never be merged. The owner repair closes the observed R2 gap; all four intended violations now have independent expected CI failure evidence.
+
+Next gate: owner closes draft PRs #5–#8 and #11 without merging. They were still open when checked after the repeat. Once closed, step 1.4 acceptance is complete and the next feature is 1.5 Google sign-in and profiles. Report PR #9 contains only documentation relative to repaired main; it is separate from all violation fixtures.
 
 ### 1.5 Google sign-in and profiles — not started
 
@@ -241,8 +258,8 @@ For every schema step: review ADRs and policy matrix; create a new migration wit
 
 ## Session handoff
 
-- Completed: orientation, accepted OpenAI ADR/guardrails, owner-merged documentation/plan/CODEOWNERS, branch protection verification, approved dependencies, local scaffold and checks.
+- Completed: orientation, accepted OpenAI ADR/guardrails, owner-merged documentation/plan/CODEOWNERS, branch protection verification, approved dependencies, owner-merged scaffold with passing local and CI checks, four independent guardrail probes and local server-only build proof.
 - Owner deferred ADR 0007 until before Phase 3. Product defaults remain revisitable before their feature steps; no background-write exception has been accepted.
-- Next: observe scaffold PR guardrails, owner review/merge, then step 1.4 deliberate violation exercise on an isolated branch. Steps 1.5–1.9 remain unstarted; fresh-session refusal exercise still needs evidence.
+- Next: owner closes probe draft PRs #5–#8 and #11 without merge, then proceeds to 1.5. Owner repair PR #10 is merged and repeat OpenAI probe #11 failed CI with the intended R2 rule. Steps 1.5–1.9 remain unstarted; fresh-session refusal exercise still needs evidence.
 - Checks/outcomes recorded under 1.3. No business data, authentication feature, remote deployment, or paid LLM calls added. Locked paths remain unchanged.
-- One scaffold commit/PR under step 1.3 authorization; owner merges. Later sessions record actual checks/outcomes and changed assumptions; never mark an unrun check passed.
+- Scaffold PR #4 is merged. Probe PRs #5–#8 are deliberately unmergeable exercises, including unexpectedly green #5. Later sessions record actual checks/outcomes and changed assumptions; never mark an unrun check passed.
