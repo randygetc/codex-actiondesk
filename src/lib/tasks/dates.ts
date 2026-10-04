@@ -85,8 +85,8 @@ export function taskGroup(task: {
     const tomorrow = current.toPlainDate().add({ days: 1 }).toZonedDateTime(zone);
     if (Temporal.Instant.compare(due, tomorrow.toInstant()) < 0)
         return "Today";
-    const monday = current.toPlainDate().add({ days: 8 - current.dayOfWeek }).toZonedDateTime(zone);
-    return Temporal.Instant.compare(due, monday.toInstant()) < 0 ? "This week" : "Later";
+    const nextSunday = current.toPlainDate().add({ days: 7 - (current.dayOfWeek % 7) }).toZonedDateTime(zone);
+    return Temporal.Instant.compare(due, nextSunday.toInstant()) < 0 ? "This week" : "Later";
 }
 export function displayDue(instant: string | null, zone: string) {
     return instant ? new Intl.DateTimeFormat("en-US", { timeZone: zone, dateStyle: "medium", timeStyle: "short" }).format(new Date(instant)) : "No due date";

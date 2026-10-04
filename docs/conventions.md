@@ -65,3 +65,5 @@ The committed config allowlists the Next.js callback on ports 3000/3100; if usin
 - Project and predecessor ownership FKs restrict hard deletion. Archived projects cannot receive new assignments; existing references can be retained and inherited. Schedule edits require explicit confirmation, and predecessor schedules remain immutable once a successor exists.
 - Explicit form labels keep accessible names stable when controlled textarea contents change. Keep form identity stable across server refreshes so save messages and invalid drafts persist.
 - Supabase's generated RPC argument types omit SQL nullability. `complete_task` accepts null for no successor; the narrow argument assertion preserves that runtime null rather than omitting the required argument.
+
+- Owner clarified that task calendar weeks start Sunday. This week ends at the next Sunday midnight in the profile timezone; dates from that boundary belong to Later. Today and Overdue retain precedence. This replaces the earlier Monday task-grouping default; the separately planned Monday digest schedule is unchanged.

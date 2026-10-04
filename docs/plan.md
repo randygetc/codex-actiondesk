@@ -35,7 +35,7 @@ These are proposed product defaults for review, not completed configuration.
 | Text limits | Project name 1–120, description up to 2,000; task title 1–200, notes up to 10,000 characters; trim required text | Before 1.6–1.7 |
 | Task priority | `low/normal/high/urgent`, default `normal` | Before 1.7 |
 | Due dates | Optional precise date/time; no all-day mode in Phase 1 | Before 1.7 |
-| Week and missing dates | Week begins Monday; separate No due date and Completed sections | Before 1.7 |
+| Week and missing dates | Week begins Sunday; separate No due date and Completed sections | Before 1.7 |
 | Recurrence | Daily, weekly, monthly, nth weekday; timezone captured at creation; one successor per completed occurrence | Before 1.7 |
 | Missed recurrence | Next occurrence follows previous scheduled time, preserving missed dates rather than silently skipping backlog | Before 1.7 |
 | DST | Reject nonexistent manual times; request explicit offset for ambiguous manual input. Recurrence shifts nonexistent time forward by the gap and uses earlier offset for repeated time | Before 1.7 |
@@ -193,7 +193,7 @@ Implementation and evidence:
 
 Owner approved the cases/defaults and both proposed dependencies before implementation. Add migration/policies, pure date logic, schemas/actions, list/detail/editor UI, and transactional completion. Project and due date optional. Render notes as text, never raw HTML; validate status transitions; confirm delete and retain drafts on error.
 
-For active tasks at a single captured `now`: Overdue is due before now; Today is remaining due before next local midnight; This week is remaining due before next local Monday; Later is the rest. Separate No due date and Completed sections. Each task appears once, sorted by due instant then stable ID. Display timezone changes grouping, not stored instants.
+For active tasks at a single captured `now`: Overdue is due before now; Today is remaining due before next local midnight; This week is remaining due before next local Sunday; Later is the rest. Separate No due date and Completed sections. Each task appears once, sorted by due instant then stable ID. Display timezone changes grouping, not stored instants.
 
 Tests/acceptance:
 
@@ -212,7 +212,7 @@ Tests/acceptance:
 - Recurrence captures the profile timezone and original local schedule anchor. Weekly 09:00 stays 09:00 across DST. Missing local recurrence times shift forward by the gap; repeated times use the earlier offset. Manual missing times fail; ambiguous manual input requires an explicit valid offset. Changing profile timezone changes display/grouping, not existing schedules or instants.
 - Completing creates only the next scheduled occurrence, even if overdue, with todo status and inherited title, notes, priority and project. COUNT is measured from the series anchor and never restarted for a successor; UNTIL is inclusive. A one-off or exhausted series has no successor.
 - Completion and successor insertion are atomic. Concurrent clicks/retries produce one successor. Reopening clears completed_at and recompleting reuses the successor. A completed predecessor with a successor cannot be deleted or have its schedule changed; deleting other occurrences does not delete other tasks. Content edits affect only subsequently created occurrences. Schedule changes on an active occurrence begin a new series and must be explicit in the editor.
-- Grouping captures one current instant and uses Monday week boundaries: Overdue, Today, This week, Later, No due date, Completed. Earlier-today tasks are Overdue; completed tasks are excluded from active groups.
+- Grouping captures one current instant and uses Sunday week boundaries: Overdue, Today, This week, Later, No due date, Completed. Earlier-today tasks are Overdue; completed tasks are excluded from active groups.
 
 #### Acceptance cases to implement first
 
@@ -226,7 +226,7 @@ Tests/acceptance:
 | Failed successor or stale schedule | Entire completion rolls back on insertion failure; changed schedule is detected under the row lock and recalculated rather than using stale input |
 | Finite and calendar rules | COUNT=2 creates exactly two total occurrences; UNTIL boundary is inclusive; second Tuesday crosses months; day 31 skips invalid months |
 | Local/UTC conversion | Manual DST gap rejects and overlap requires offset; recurrence follows gap/overlap policy; weekly Pacific 09:00 remains 09:00 across November |
-| Group boundaries | Pacific 23:30 is Today when now is earlier that day; earlier-today is Overdue; midnight/Monday boundaries and null dates classify once |
+| Group boundaries | Pacific 23:30 is Today when now is earlier that day; earlier-today is Overdue; midnight/Sunday boundaries and null dates classify once |
 | Timezone change | Pacific to Asia/Manila changes displayed dates/groups without changing due_at or recurrence timezone |
 
 #### Implementation and verification sequence

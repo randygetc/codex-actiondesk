@@ -13,7 +13,7 @@ describe("task calendars", () => {
     it("keeps late Pacific dates Today and regroups in Manila", () => {
         const task = { status: "todo", due_at: "2026-10-04T06:30:00Z" };
         expect(taskGroup(task, "America/Los_Angeles", "2026-10-03T12:00:00Z")).toBe("Today");
-        expect(taskGroup(task, "Asia/Manila", "2026-10-03T12:00:00Z")).toBe("This week");
+        expect(taskGroup(task, "Asia/Manila", "2026-10-03T12:00:00Z")).toBe("Later");
     });
     it("preserves weekly wall time across November DST", () => expect(nextOccurrence("FREQ=WEEKLY", "2026-10-25T09:00", "America/Los_Angeles", 1)).toBe("2026-11-01T17:00:00Z"));
     it("advances second Tuesday", () => expect(nextOccurrence("FREQ=MONTHLY;BYDAY=2TU", "2026-10-13T09:00", "UTC", 1)).toBe("2026-11-10T09:00:00Z"));
@@ -37,9 +37,18 @@ describe("task calendars", () => {
             expect(() => parseRule(value)).toThrow();
         expect(() => validateAnchor("FREQ=WEEKLY;BYDAY=TU", "2026-10-12T09:00", "UTC")).toThrow();
     });
-    it("uses exclusive midnight and Monday boundaries", () => {
+    it("includes October 8 in the week beginning Sunday October 4", () => {
+        expect(taskGroup({ status: "todo", due_at: "2026-10-08T16:00:00Z" }, "America/Los_Angeles", "2026-10-04T19:00:00Z")).toBe("This week");
+    });
+    it("includes Saturday and excludes Sunday at local midnight", () => {
+        const zone = "America/Los_Angeles";
+        const now = "2026-10-09T19:00:00Z";
+        expect(taskGroup({ status: "todo", due_at: "2026-10-11T06:59:59Z" }, zone, now)).toBe("This week");
+        expect(taskGroup({ status: "todo", due_at: "2026-10-11T07:00:00Z" }, zone, now)).toBe("Later");
+    });
+    it("uses exclusive midnight and Sunday boundaries", () => {
         const now = "2026-10-04T12:00:00Z";
-        expect(taskGroup({ status: "todo", due_at: "2026-10-05T00:00:00Z" }, "UTC", now)).toBe("Later");
+        expect(taskGroup({ status: "todo", due_at: "2026-10-11T00:00:00Z" }, "UTC", now)).toBe("Later");
         expect(taskGroup({ status: "todo", due_at: "2026-10-04T11:00:00Z" }, "UTC", now)).toBe("Overdue");
         expect(taskGroup({ status: "todo", due_at: null }, "UTC", now)).toBe("No due date");
         expect(taskGroup({ status: "done", due_at: now }, "UTC", now)).toBe("Completed");
