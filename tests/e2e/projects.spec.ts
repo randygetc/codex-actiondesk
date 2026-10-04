@@ -1,0 +1,77 @@
+import { expect, test } from "@playwright/test";
+import { signInLocalFixture } from "./helpers/auth";
+
+test("create, edit, archive, restore and confirmed delete with retained invalid drafts", async ({ page, context }) => {
+  await signInLocalFixture(context);
+  await page.goto("/projects");
+  await expect(page.getByText("No active projects yet.", { exact: false })).toBeVisible();
+  await page.getByLabel("Project name", { exact: true }).fill("   ");
+  await page.getByLabel("Description (optional)").fill("Keep draft");
+  await page.getByRole("button", { name: "Create project" }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText("Enter a project name.");
+  await expect(page.getByLabel("Project name", { exact: true })).toHaveValue("   ");
+  await expect(page.getByLabel("Description (optional)")).toHaveValue("Keep draft");
+  await page.getByLabel("Project name", { exact: true }).fill("  Launch  ");
+  await page.getByLabel("Description (optional)").fill("<b>Plain text description</b>");
+  await page.getByRole("button", { name: "Create project" }).click();
+  await expect(page).toHaveURL(/\/projects\/[0-9a-f-]+$/);
+  const projectUrl = page.url();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Launch");
+  await page.getByLabel("Project name", { exact: true }).fill("Edited launch");
+  await page.getByRole("button", { name: "Save project" }).click();
+  await expect(page.getByRole("main").getByRole("status")).toHaveText("Project saved.");
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Edited launch");
+  await page.getByRole("link", { name: "Back to projects" }).click();
+  await expect(page.getByText("<b>Plain text description</b>", { exact: true })).toBeVisible();
+  await expect(page.getByRole("main").locator("b")).toHaveCount(0);
+  await page.getByRole("link", { name: "Edited launch", exact: true }).click();
+  await page.getByRole("button", { name: "Archive project", exact: true }).click();
+  await expect(page).toHaveURL(/\/projects$/);
+  await expect(page.getByRole("region", { name: "Archived projects" }).getByRole("link", { name: "Edited launch" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Active projects" }).getByRole("link", { name: "Edited launch" })).toHaveCount(0);
+  await page.getByRole("link", { name: "Edited launch", exact: true }).click();
+  await expect(page.getByText("Archived project", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Restore project" }).click();
+  await expect(page.getByRole("region", { name: "Active projects" }).getByRole("link", { name: "Edited launch" })).toBeVisible();
+  await page.getByRole("link", { name: "Edited launch", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Delete project" })).toBeDisabled();
+  await page.getByLabel("Confirm permanent deletion").check();
+  await page.getByRole("button", { name: "Delete project" }).click();
+  await expect(page).toHaveURL(/\/projects$/);
+  await expect(page.getByRole("link", { name: "Edited launch", exact: true })).toHaveCount(0);
+  await page.goto(projectUrl);
+  await expect(page.getByText("This page could not be found.")).toBeVisible();
+});
+
+test("another user cannot read, mutate, or delete a project through UI or Data API", async ({ page, context, browser }) => {
+  const owner = await signInLocalFixture(context);
+  await page.goto("/projects");
+  await page.getByLabel("Project name", { exact: true }).fill("Owner-only project");
+  await page.getByRole("button", { name: "Create project" }).click();
+  await expect(page).toHaveURL(/\/projects\/[0-9a-f-]+$/);
+  const url = page.url();
+  const id = new URL(url).pathname.split("/").at(-1)!;
+  const otherContext = await browser.newContext();
+  try {
+    const other = await signInLocalFixture(otherContext);
+    const otherPage = await otherContext.newPage();
+    await otherPage.goto(url);
+    await expect(otherPage.getByText("This page could not be found.")).toBeVisible();
+    await otherPage.goto("http://127.0.0.1:3100/projects");
+    await expect(otherPage.getByRole("link", { name: "Owner-only project" })).toHaveCount(0);
+    const read = await other.supabase.from("projects").select("id").eq("id", id);
+    expect(read.error).toBeNull(); expect(read.data).toEqual([]);
+    const update = await other.supabase.from("projects").update({ name: "Foreign edit" }).eq("id", id).select("id");
+    expect(update.error).toBeNull(); expect(update.data).toEqual([]);
+    const deletion = await other.supabase.from("projects").delete().eq("id", id).select("id");
+    expect(deletion.error).toBeNull(); expect(deletion.data).toEqual([]);
+    const forged = await other.supabase.from("projects").insert({ user_id: owner.user.id, name: "Forged owner" });
+    expect(forged.error?.code).toBe("42501");
+    await page.reload();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Owner-only project");
+    await page.getByLabel("Confirm permanent deletion").check();
+    await page.getByRole("button", { name: "Delete project" }).click();
+    await expect(page).toHaveURL(/\/projects$/);
+  } finally { await otherContext.close(); }
+});
