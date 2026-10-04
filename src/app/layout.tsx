@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ActionDesk",
+  title: "Code-ActionDesk",
   description: "Turn meeting notes into tasks you can review and act on.",
 };
 

@@ -12,7 +12,7 @@ export default async function LoginPage({ searchParams }: {
   const { data: { user }, error } = await supabase.auth.getUser();
   if (user && !error && params.error !== "sign_out_failed") redirect(next);
   return <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center px-6 py-16">
-    <p className="text-lg font-semibold text-primary">ActionDesk</p>
+    <p className="text-lg font-semibold text-primary">Code-ActionDesk</p>
     <h1 className="mt-6 text-4xl font-semibold tracking-tight">Turn conversations into action.</h1>
     <p className="mt-4 text-muted-foreground">Sign in to manage your work and preferences.</p>
     {params.error && <p role="alert" className="mt-6 text-destructive">
