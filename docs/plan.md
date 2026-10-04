@@ -1,14 +1,14 @@
 # ActionDesk implementation plan
 
-Updated: 2026-10-03. Status: scaffold and guardrail proofs merged/accepted; step 1.5 implemented locally, pending PR checks, owner Google smoke test and merge.
+Updated: 2026-10-04. Status: step 1.5 owner smoke-tested and merged; step 1.6 implemented and tested locally, pending PR checks and owner merge.
 
 ## Current state and authority
 
-- The authentication branch starts from merged PR #9 and owner repair PR #10. Accepted ADR 0006 establishes OpenAI and supersedes ADR 0002.
-- Scaffold now includes Google OAuth initiation/callback, protected routes, sign-out, profile provisioning/RLS, timezone settings, generated types, and local Auth tests. Projects/tasks CRUD remains unimplemented.
+- The projects branch starts from merged PR #14 (`643d1c5`), including the Google account chooser and user-email header. Accepted ADR 0006 establishes OpenAI and supersedes ADR 0002.
+- Scaffold includes tested Google OAuth, profiles/RLS, timezone settings, and owner-scoped project CRUD/archive/restore. Tasks CRUD remains unimplemented.
 - Phase 1 is detailed below; Phases 2–3 require expanded plans at their kickoff planning steps.
 - Locked architecture and accepted ADRs govern implementation. This plan does not authorize architectural exceptions, dependency installation, production commands, or edits to locked paths.
-- Owner authorized steps 1.3–1.5 and approved scaffold dependencies. Step 1.5 adds no dependencies. Branch protections were verified remotely; live Google setup remains unverified.
+- Owner authorized steps 1.3–1.6 and approved scaffold dependencies. Steps 1.5–1.6 add no dependencies. Google smoke test was confirmed by the owner; branch protections and required CI were verified remotely.
 
 ## Invariants across all phases
 
@@ -153,7 +153,7 @@ Owner merged repair [PR #10](https://github.com/randygetc/codex-actiondesk/pull/
 
 Owner closed draft PRs #5–#8 and #11 without merging and merged report PR #9 at `bfd8db4`; verified through GitHub API before starting 1.5. All four guardrail proofs and cleanup are complete.
 
-### 1.5 Google sign-in and profiles — implemented; manual Google smoke test and merge pending
+### 1.5 Google sign-in and profiles — complete
 
 Migration: profiles, Auth-user creation trigger, grants, RLS, pgTAP. Routes: login/callback, protected layout, settings; actions: sign-out and validated timezone update. Validate IANA zones server-side; changing display timezone never rewrites due instants or existing recurrence schedules. Auth session establishment is identity lifecycle, not an alternate business-write path. If the owner interprets R5 as applying to provider Auth lifecycle writes too, settle that scope before adding a conflicting implementation.
 
@@ -171,11 +171,23 @@ Implementation and evidence:
 - Browser alert assertions are scoped to main content because Next.js also renders a route announcer with role alert. Browser config privately discovers local public settings and rejects fixture targets outside ActionDesk port 55321.
 - Google provider remains disabled in committed local config so CI needs no credentials; env references and redirect URLs are ready. Owner credential setup and live Google consent/code exchange remain **unverified**, and are the remaining acceptance gate. Setup and manual checklist are saved in `docs/conventions.md` with the official Supabase reference. No provider secrets, remote changes, privileged application requests, or paid calls were made.
 
-### 1.6 Projects CRUD — not started
+Subsequent evidence: owner requested a separate fresh local stack, created as `codex-actiondesk-fresh` on API 56321/database 56322 with app settings in ignored `.env.local`. Existing stacks/data were preserved. Owner configured Google and confirmed the full smoke test. PR #12 (auth/branding), #13 (verified user email in header), and #14 (Google `prompt=select_account`) were merged with passing required checks. Incognito removed the reported hydration warning; no warning reproduced in clean Chromium, so no hydration suppression was added. Google/account-switching acceptance is complete. The earlier unverified status above describes the initial implementation checks only.
+
+### 1.6 Projects CRUD — implemented; PR checks and owner merge pending
 
 Review proposed fields/delete semantics; add migration, owner policies, schemas, create/edit/archive/delete actions, and list/detail UI with empty/loading/error states. Archived projects are excluded from new task choices but existing tasks remain accessible. Require delete confirmation and reject deletion of referenced projects.
 
 Tests/acceptance: name bounds; create/edit/list/archive round trip; empty-only delete; owner immutability and cross-user read/write rejection under direct authenticated database requests as well as actions. Validation errors remain usable without exposing other-user data. Record vague-prompt corrections here until learning-doc permissions are clarified.
+
+Implementation and evidence:
+
+- New append-only migration `20261004030000_projects.sql` creates owner-scoped projects, same-migration RLS, all four CRUD policies, column-limited insert/update grants, immutable IDs/ownership/creation time, name/description constraints, server update timestamps, and a structural `(id,user_id)` key for the future task ownership FK. No speculative indexes or dependencies added.
+- List/detail routes include empty, loading, unavailable/not-found states. Controlled forms retain invalid drafts. Descriptions render as escaped plain text. Actions validate Zod, independently verify `getUser()`, derive insert ownership, and filter updates/deletes by verified owner plus ID. Archive/restore preserves rows; deletion requires UI and server confirmation and reports reference conflicts safely.
+- Lint/typecheck, 69 unit tests, dependency-cruiser, production Webpack build, and six Chromium tests pass. Browser tests prove the full create/edit/archive/restore/confirmed-delete journey, whitespace validation with draft retention, plain-text rendering, foreign detail denial, and direct Data API cross-user SELECT/UPDATE/DELETE/forged-owner INSERT denial. Test-created projects are deleted through their owner's UI; disposable Auth fixtures stay on the original local test stack.
+- pgTAP passes 57 assertions on both original and fresh stacks. Tests cover owner/other/anonymous CRUD, ownership/ID immutability, constraints, archive/restore, and unreferenced deletion. A rollback-only private reference fixture tests the structural composite-key/FK deletion contract. This fixture is not a production tasks table: actual task FK integration and archived-task-choice exclusion must be implemented and tested in 1.7. The delete action already handles FK error `23503` without cascading or bypassing it.
+- Applied only the new migration to the fresh Google-enabled stack; preserved its existing users/profiles/settings. Copied the new rollback-only tests into its ignored workdir and regenerated source database types from the test stack.
+- Browser webServer now builds with its own public local test settings before starting, so production compilation cannot bake in the fresh stack's `.env.local` URL/key while tests create users against the original stack. Test fixtures remain restricted to port 55321; manual Google app stays on 56321.
+- Vague-prompt decisions used the existing plan defaults: names 1–120 trimmed characters, optional description up to 2,000, separate active/archived lists, reversible archive, and explicit permanent-delete confirmation. No owner corrections required so far; referenced-task deletion remains a mandatory 1.7 integration check.
 
 ### 1.7 Tasks CRUD and recurrence — not started
 
@@ -270,6 +282,6 @@ For every schema step: review ADRs and policy matrix; create a new migration wit
 
 - Completed: orientation, accepted OpenAI ADR/guardrails, owner-merged documentation/plan/CODEOWNERS, branch protection verification, approved dependencies, owner-merged scaffold with passing local and CI checks, four independent guardrail probes and local server-only build proof.
 - Owner deferred ADR 0007 until before Phase 3. Product defaults remain revisitable before their feature steps; no background-write exception has been accepted.
-- Next: review step 1.5 PR/CI, configure Google locally and run the manual smoke test, then owner merges. Steps 1.6–1.9 remain unstarted; fresh-session refusal exercise still needs evidence.
-- Checks/outcomes recorded under 1.3–1.5. Profiles/authentication implemented and tested locally; no task/project business data, remote deployment, or paid LLM calls added. Locked paths remain unchanged on the feature branch.
+- Next: review/merge step 1.6 after required CI, then plan task/recurrence acceptance cases for 1.7. Steps 1.7–1.9 remain unstarted; fresh-session refusal exercise still needs evidence.
+- Checks/outcomes recorded under 1.3–1.6. Google smoke test confirmed by owner; projects implemented and tested on a feature branch. No tasks, remote deployment, or paid LLM calls added. Locked paths remain unchanged on the feature branch.
 - Scaffold PR #4 is merged. Probe PRs #5–#8 are deliberately unmergeable exercises, including unexpectedly green #5. Later sessions record actual checks/outcomes and changed assumptions; never mark an unrun check passed.

@@ -48,3 +48,10 @@ Provider setup follows [Supabase's Google guide](https://supabase.com/docs/guide
 6. Continue with Google, complete consent, and confirm arrival at `/tasks`. In Settings, confirm the profile and initial `America/Los_Angeles` timezone, save `Asia/Manila`, reload to verify persistence, try an invalid zone, and sign out. Visiting `/settings` afterward must lead to login. Sign in again and confirm the saved zone was preserved rather than a profile recreated.
 
 The committed config allowlists the Next.js callback on ports 3000/3100; if using `localhost` instead of `127.0.0.1`, update `APP_URL` and the local Supabase redirect allowlist consistently. Hosted/dev-project setup uses that project's Google provider settings and Supabase Auth callback URL plus the deployed application's exact callback URL. No remote project is configured by this step.
+
+## Projects
+
+- Names are required and trimmed (1–120 characters); descriptions are optional plain text up to 2,000 characters. React escapes descriptions rather than rendering markup.
+- Project owner comes from verified Auth identity; column grants prevent identity/ownership/creation-time changes, and RLS protects direct Data API requests as well as actions.
+- Archive/restore changes availability for future new-task choices without deleting project history. Hard deletion requires explicit confirmation. Step 1.7 must introduce the task ownership FK with restrictive project deletion and test referenced-project rejection; no task cascade is allowed.
+- Browser tests build the production app with the same test-stack settings used at runtime. This avoids Next.js embedding the manual fresh stack's public environment settings during compilation. The manual fresh instance lives in locally ignored `.local-supabase/fresh` on ports 56320–56329; the original stack on 55320–55329 is used for disposable browser fixtures.
