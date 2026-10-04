@@ -251,7 +251,7 @@ Tests/acceptance:
 - Step 1.8 remains the dedicated timezone edge-case checkpoint; baseline cases introduced here do not mark that separate step complete. Owner merged [PR #16](https://github.com/randygetc/codex-actiondesk/pull/16) at `08da134`, including Sunday-start correction `011a304`; required guardrails passed for that fix.
 
 
-### 1.8 Timezone edge cases — verified locally; owner review pending
+### 1.8 Timezone edge cases — merged
 
 Fixed clocks and explicit IANA zones must avoid dependence on host timezone. Required tests: 11:30pm Pacific remains Today when now is earlier that local day; weekly 9am Pacific stays 9am over November DST; Asia/Manila display change recomputes groups without moving instants; second Tuesday works across a month boundary.
 
@@ -277,11 +277,30 @@ The owner clarified Sunday–Saturday task weeks after 1.7; all week-boundary ch
 - Full local unit suite: 118 tests pass. Lint, typecheck and dependency-cruiser pass. Existing pgTAP suite: 97 assertions pass on both original and fresh stacks. Production build and all 12 Chromium tests pass, including all three new persisted timezone scenarios.
 - No production logic defect found in these additional cases; no dependency, schema, committed migration or locked-file changes needed. Existing data is preserved; browser fixtures target only the original local stack and leave disposable Auth identities.
 
-### 1.9 CI and checkpoint — not started
+### 1.9 CI and checkpoint — implemented; remote verification pending
 
 Add editable `.github/workflows/ci.yml`, separate from locked guardrails. Clean checkout runs lint, typecheck, unit, build, local migrations/pgTAP, and Playwright with isolated fixtures. No live OAuth/LLM dependency or production secrets. Failure artifacts must redact sensitive content. Owner makes `ci` required after it is reliable.
 
 Acceptance: database rebuilds from migration history, generated types are reproducible, all tests/checks pass, Google sign-in/settings/projects/tasks/recurrence work, and four guardrail proofs are recorded. Perform documented phase-done checks and update this plan/conventions; owner reviews PR. No Phase 2 implementation before Phase 1 checkpoint.
+
+#### Implementation and Phase 1 review
+
+- Owner merged [PR #17](https://github.com/randygetc/codex-actiondesk/pull/17) at `6310826`; its timezone checkpoint checks and guardrails passed.
+- New editable `.github/workflows/ci.yml` adds the `ci` job for PRs and main pushes. It installs from the lockfile on Node 24, runs lint/typecheck/unit/three-host-timezone calendars/import checks, starts a fresh local Supabase from committed migrations, runs pgTAP and database-type verification, installs Chromium, and builds/runs browser tests. Cleanup stops only the disposable runner stack. Locked guardrails remains separate.
+- Supabase CLI is pinned to 2.118.0 to match the generated type baseline. `scripts/check-db-types.mjs` compares TypeScript printer-normalized generated/committed declarations so whitespace differences do not hide or invent schema drift. It does not rewrite files.
+- `scripts/start-test-supabase.mjs` captures all CLI start/status output, exports only validated local public test settings, masks the public key in GitHub, and reports generic startup failure without dumping credentials. CI uses no production secrets, live Google or paid LLM calls.
+- CI Playwright uses one worker, two configured retries, a three-minute build/start timeout, disabled traces and no report/trace uploads. Local failed-run traces remain ignored. Startup and type-verification scripts pass against the original existing local stack without resetting or stopping it.
+- Local phase-done checks: lint, typecheck, 118 unit tests, dependency-cruiser, database-type comparison and 97 pgTAP assertions pass. Production build and all 12 Chromium tests pass with CI=true (one worker, traces off). Remote clean-run results remain pending at this point.
+- Existing owner-confirmed Google smoke test is recorded under 1.5. Projects/tasks/settings/recurrence, timezone changes, cross-user denial and transactional retry/rollback have automated browser/database evidence. All four deliberate architectural violations have independent expected CI failures under 1.4, including the owner-repaired SDK matcher.
+- Friction debrief is recorded in the three-line `docs/learnings.md`. No Phase 1 architectural exception is needed; the matcher repair was performed by the owner, and no guardrail was disabled or bypassed. The deferred background-digest ADR 0007 remains a Phase 3 gate.
+
+Remaining owner gates before marking Phase 1 complete:
+
+1. Review/merge the step 1.9 PR after both `ci` and `guardrails` pass.
+2. Add the GitHub Actions `ci` status check to the existing main branch protection alongside `guardrails`, retaining the current strict/up-to-date and no-force-push settings; verify both required checks remotely.
+3. The kickoff 1.2 fresh-session refusal exercise still has no recorded evidence. In a fresh Codex session, request the prohibited architecture/admin-tool edit and record refusal/ADR proposal; do not authorize or merge the prohibited change. Claude-only hooks are not active in Codex.
+
+No Phase 2 work begins before these checkpoint gates are settled.
 
 ## Phase 2 — LLM features (outline)
 
@@ -349,6 +368,6 @@ For every schema step: review ADRs and policy matrix; create a new migration wit
 
 - Completed: orientation, accepted OpenAI ADR/guardrails, owner-merged documentation/plan/CODEOWNERS, branch protection verification, approved dependencies, owner-merged scaffold with passing local and CI checks, four independent guardrail probes and local server-only build proof.
 - Owner deferred ADR 0007 until before Phase 3. Product defaults remain revisitable before their feature steps; no background-write exception has been accepted.
-- Next: review/merge the step 1.8 timezone edge-case PR after required CI, then proceed to step 1.9 CI and Phase 1 checks. PR #16 is owner-merged with the Sunday-start correction; 1.8 local verification is complete and 1.9 remains unstarted. Fresh-session refusal exercise still needs evidence.
+- Next: verify/review the step 1.9 CI PR, require ci alongside guardrails, and settle the remaining Phase 1 owner gates. PRs #16 and #17 are owner-merged; 1.9 implementation/local verification is in progress. Fresh-session refusal exercise still needs evidence.
 - Checks/outcomes recorded under 1.3–1.6. Google smoke test confirmed by owner; projects owner-merged and tasks implemented/tested on a feature branch. No remote deployment or paid LLM calls added. Locked paths remain unchanged on the feature branch.
 - Scaffold PR #4 is merged. Probe PRs #5–#8 are deliberately unmergeable exercises, including unexpectedly green #5. Later sessions record actual checks/outcomes and changed assumptions; never mark an unrun check passed.

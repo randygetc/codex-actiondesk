@@ -1,0 +1,3 @@
+Projects (1.6): zero owner corrections, 69 unit/6 browser/57 database checks; tasks (1.7): one owner correction to Sunday-start weeks, 105 unit/9 browser/97 database checks after that fix.
+Keep verified-user actions, ownership-aware restrictive FKs, atomic invoker completion, and pure calendar logic with explicit timezone/anchor: their tests caught validation/UI defects and protected retries and ownership.
+Baseline DST cases passed; step 1.8 added 13 edge cases and three persisted browser scenarios without production fixes. The SDK guardrail gap required an owner matcher repair and repeat proof, with no architectural bypass.
