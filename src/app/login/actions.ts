@@ -10,7 +10,10 @@ export async function signInWithGoogle(formData: FormData) {
   callback.searchParams.set("next", next);
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google", options: { redirectTo: callback.toString(), skipBrowserRedirect: true },
+    provider: "google", options: {
+      redirectTo: callback.toString(), skipBrowserRedirect: true,
+      queryParams: { prompt: "select_account" },
+    },
   });
   if (error || !data.url) redirect(`/login?error=sign_in_failed&next=${encodeURIComponent(next)}`);
   redirect(data.url);

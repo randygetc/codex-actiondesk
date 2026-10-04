@@ -9,11 +9,12 @@ beforeEach(() => {
   mocks.oauth.mockResolvedValue({ data: { url: "https://supabase.example/auth/v1/authorize" }, error: null });
 });
 describe("Google sign-in action", () => {
-  it("initiates server-side OAuth with a trusted callback and approved next destination", async () => {
+  it("requests Google's account chooser with a trusted callback and approved next destination", async () => {
     const form = new FormData(); form.set("next", "/settings");
     await expect(signInWithGoogle(form)).rejects.toThrow("redirect:https://supabase.example");
     expect(mocks.oauth).toHaveBeenCalledWith({ provider: "google", options: {
       redirectTo: "http://127.0.0.1:3000/auth/callback?next=%2Fsettings", skipBrowserRedirect: true,
+      queryParams: { prompt: "select_account" },
     } });
   });
   it("handles provider failures with a safe destination and generic message", async () => {
