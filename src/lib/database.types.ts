@@ -49,13 +49,40 @@ export type Database = {
                   Relationships: [
 
                   ]
+                },"tasks": {
+                  Row: {
+                    "completed_at": string | null,"created_at": string,"due_at": string | null,"id": string,"notes": string,"occurrence": number,"predecessor_id": string | null,"priority": string,"project_id": string | null,"recurrence": string | null,"recurrence_anchor": string | null,"recurrence_timezone": string | null,"revision": number,"status": string,"title": string,"updated_at": string,"user_id": string
+                  }
+                  Insert: {
+                    "completed_at"?: string | null,"created_at"?: string,"due_at"?: string | null,"id"?: string,"notes"?: string,"occurrence"?: number,"predecessor_id"?: string | null,"priority"?: string,"project_id"?: string | null,"recurrence"?: string | null,"recurrence_anchor"?: string | null,"recurrence_timezone"?: string | null,"revision"?: number,"status"?: string,"title": string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Update: {
+                    "completed_at"?: string | null,"created_at"?: string,"due_at"?: string | null,"id"?: string,"notes"?: string,"occurrence"?: number,"predecessor_id"?: string | null,"priority"?: string,"project_id"?: string | null,"recurrence"?: string | null,"recurrence_anchor"?: string | null,"recurrence_timezone"?: string | null,"revision"?: number,"status"?: string,"title"?: string,"updated_at"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "tasks_predecessor_id_user_id_fkey"
+      columns: ["predecessor_id","user_id"]
+isOneToOne: false
+      referencedRelation: "tasks"
+      referencedColumns: ["id","user_id"]
+    },{
+      foreignKeyName: "tasks_project_id_user_id_fkey"
+      columns: ["project_id","user_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id","user_id"]
+    }
+                  ]
                 }
           }
           Views: {
             [_ in never]: never
           }
           Functions: {
-            [_ in never]: never
+            "complete_task":
+{ Args: { "p_id": string,"p_next": string,"p_revision": number }; Returns: string
+                           }
           }
           Enums: {
             [_ in never]: never
