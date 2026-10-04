@@ -5,7 +5,7 @@ export async function proxy(request: NextRequest) {
   return updateSession(request);
 }
 
-// The public scaffold needs no credentials; these become authenticated routes in step 1.5.
+// Refresh cookies before pages/actions independently authorize with getUser().
 export const config = {
-  matcher: ["/tasks/:path*", "/projects/:path*", "/settings/:path*", "/auth/:path*"],
+  matcher: ["/", "/login", "/tasks/:path*", "/projects/:path*", "/settings/:path*", "/auth/:path*"],
 };
