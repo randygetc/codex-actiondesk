@@ -1,14 +1,14 @@
 # ActionDesk implementation plan
 
-Updated: 2026-10-03. Status: plan merged in PR #3; step 1.3 scaffold implemented, awaiting PR checks and owner merge.
+Updated: 2026-10-03. Status: scaffold and guardrail proofs merged/accepted; step 1.5 implemented locally, pending PR checks, owner Google smoke test and merge.
 
 ## Current state and authority
 
-- The scaffold branch starts from merged PRs #1–#3. Accepted ADR 0006 establishes OpenAI and supersedes ADR 0002.
-- Scaffold now contains Next.js App Router source, approved dependency manifest/lockfile, local Supabase configuration, empty baseline migration, generated types, and unit/browser tests. Business tables/features remain unimplemented.
+- The authentication branch starts from merged PR #9 and owner repair PR #10. Accepted ADR 0006 establishes OpenAI and supersedes ADR 0002.
+- Scaffold now includes Google OAuth initiation/callback, protected routes, sign-out, profile provisioning/RLS, timezone settings, generated types, and local Auth tests. Projects/tasks CRUD remains unimplemented.
 - Phase 1 is detailed below; Phases 2–3 require expanded plans at their kickoff planning steps.
 - Locked architecture and accepted ADRs govern implementation. This plan does not authorize architectural exceptions, dependency installation, production commands, or edits to locked paths.
-- Owner authorized step 1.3 and approved scaffold dependencies. Branch protections were verified remotely; remaining account setup is unverified unless separately evidenced.
+- Owner authorized steps 1.3–1.5 and approved scaffold dependencies. Step 1.5 adds no dependencies. Branch protections were verified remotely; live Google setup remains unverified.
 
 ## Invariants across all phases
 
@@ -130,7 +130,7 @@ Implementation evidence:
 - Production dependency audit reports zero vulnerabilities. Development lint chain reports five related high-severity entries from unpatched `braces` advisory GHSA-vfj7-8cjw-p6xm. Track upstream rather than force-downgrading Next.js lint tooling.
 - Eval script/harness deferred to 2.2 and application CI workflow to 1.9. [Scaffold CI](https://github.com/randygetc/codex-actiondesk/actions/runs/37160278271) passed, including import and database checks. Owner merged [PR #4](https://github.com/randygetc/codex-actiondesk/pull/4) into main at `b038d45`.
 
-### 1.4 Prove guardrails — all four failures proven; owner closure pending
+### 1.4 Prove guardrails — complete
 
 After scaffold merge, use a throwaway branch and separate commits for SDK-in-component, admin-in-action, public-table-without-RLS, and modifying the committed baseline migration. Check each revision independently so an earlier failure does not hide the next violation. Keep violations off the implementation branch; do not apply labels to mask failures.
 
@@ -151,15 +151,25 @@ R2 diagnosis: dependency-cruiser's JSON graph reports module `openai` resolved t
 
 Owner merged repair [PR #10](https://github.com/randygetc/codex-actiondesk/pull/10) at `8e1747a`. The existing legitimate LLM SDK import passes dependency-cruiser on repaired main. Replaying the original component fixture in commit `7dc196e` on a fresh branch produces the named `R2-openai-sdk-only-in-llm` failure locally and in [CI run 37162637975](https://github.com/randygetc/codex-actiondesk/actions/runs/37162637975), specifically in Import boundaries. [Draft PR #11](https://github.com/randygetc/codex-actiondesk/pull/11) contains this repeat probe and must never be merged. The owner repair closes the observed R2 gap; all four intended violations now have independent expected CI failure evidence.
 
-Next gate: owner closes draft PRs #5–#8 and #11 without merging. They were still open when checked after the repeat. Once closed, step 1.4 acceptance is complete and the next feature is 1.5 Google sign-in and profiles. Report PR #9 contains only documentation relative to repaired main; it is separate from all violation fixtures.
+Owner closed draft PRs #5–#8 and #11 without merging and merged report PR #9 at `bfd8db4`; verified through GitHub API before starting 1.5. All four guardrail proofs and cleanup are complete.
 
-### 1.5 Google sign-in and profiles — not started
+### 1.5 Google sign-in and profiles — implemented; manual Google smoke test and merge pending
 
 Migration: profiles, Auth-user creation trigger, grants, RLS, pgTAP. Routes: login/callback, protected layout, settings; actions: sign-out and validated timezone update. Validate IANA zones server-side; changing display timezone never rewrites due instants or existing recurrence schedules. Auth session establishment is identity lifecycle, not an alternate business-write path. If the owner interprets R5 as applying to provider Auth lifecycle writes too, settle that scope before adding a conflicting implementation.
 
 Tests: timezone and callback-destination unit cases; profile trigger/isolation pgTAP; Playwright anonymous redirect, settings save/rejection, sign-out denial. Local auth fixtures make CI independent of Google; manually smoke-test real OAuth in dev.
 
 Acceptance: Google login works, profile created once with Pacific default, valid timezone persists, anonymous users redirect, other-user updates fail, and authorization uses `getUser()` without admin-client request paths.
+
+Implementation and evidence:
+
+- New migration `20261004010000_profiles.sql` creates profiles with same-migration RLS, own SELECT/UPDATE policies, column-limited grants, no client INSERT/DELETE, database timezone/name constraints, server-controlled timestamps, and a private fixed-search-path provisioning trigger. Existing identities are provisioned without overwriting profiles. Auth metadata timezone/owner values are never trusted.
+- Root routes by verified authentication; login initiates Google PKCE OAuth through a Server Action, and callback exchanges the code then verifies the user. Redirects use server `APP_URL` plus fixed application destination allowlist; neither incoming hosts nor arbitrary `next` values determine the destination. Callback does no business writes.
+- `(app)` layout and pages require `getUser()`; timezone and sign-out actions authorize independently. Tasks/projects are protected placeholders pending 1.6–1.7. Timezone updates validate Zod, use the user client, derive ownership from the verified user, and never rewrite dates.
+- Applied the new migration only to local ActionDesk; generated database types. pgTAP passes 27 assertions across existing RLS coverage and profile trigger/grant/ownership/anonymous/invalid-input tests.
+- Lint, typecheck, 50 unit tests, dependency-cruiser and production Webpack build pass. Four Chromium production tests pass: anonymous home/protected redirects, safe callback failure, profile defaults, real settings save/reload/rejection, and sign-out followed by denied protected access. Browser fixtures use public-key local Auth and leave disposable local identities; SQL fixtures roll back.
+- Browser alert assertions are scoped to main content because Next.js also renders a route announcer with role alert. Browser config privately discovers local public settings and rejects fixture targets outside ActionDesk port 55321.
+- Google provider remains disabled in committed local config so CI needs no credentials; env references and redirect URLs are ready. Owner credential setup and live Google consent/code exchange remain **unverified**, and are the remaining acceptance gate. Setup and manual checklist are saved in `docs/conventions.md` with the official Supabase reference. No provider secrets, remote changes, privileged application requests, or paid calls were made.
 
 ### 1.6 Projects CRUD — not started
 
@@ -260,6 +270,6 @@ For every schema step: review ADRs and policy matrix; create a new migration wit
 
 - Completed: orientation, accepted OpenAI ADR/guardrails, owner-merged documentation/plan/CODEOWNERS, branch protection verification, approved dependencies, owner-merged scaffold with passing local and CI checks, four independent guardrail probes and local server-only build proof.
 - Owner deferred ADR 0007 until before Phase 3. Product defaults remain revisitable before their feature steps; no background-write exception has been accepted.
-- Next: owner closes probe draft PRs #5–#8 and #11 without merge, then proceeds to 1.5. Owner repair PR #10 is merged and repeat OpenAI probe #11 failed CI with the intended R2 rule. Steps 1.5–1.9 remain unstarted; fresh-session refusal exercise still needs evidence.
-- Checks/outcomes recorded under 1.3. No business data, authentication feature, remote deployment, or paid LLM calls added. Locked paths remain unchanged.
+- Next: review step 1.5 PR/CI, configure Google locally and run the manual smoke test, then owner merges. Steps 1.6–1.9 remain unstarted; fresh-session refusal exercise still needs evidence.
+- Checks/outcomes recorded under 1.3–1.5. Profiles/authentication implemented and tested locally; no task/project business data, remote deployment, or paid LLM calls added. Locked paths remain unchanged on the feature branch.
 - Scaffold PR #4 is merged. Probe PRs #5–#8 are deliberately unmergeable exercises, including unexpectedly green #5. Later sessions record actual checks/outcomes and changed assumptions; never mark an unrun check passed.

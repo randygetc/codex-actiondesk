@@ -27,3 +27,24 @@ The starter kit's `.claude/` permissions, hooks, and slash commands are Claude C
 - `components.json`, CSS theme tokens, and `cn()` establish the shadcn/ui setup. Component dependencies require approval when added later.
 - Unit tests are colocated as `*.test.ts(x)`; e2e tests live in `tests/e2e/`. Vitest aliases `server-only` only in the test runner; the actual Next.js build retains its enforcement.
 - The single logger validates an allowlist of metadata and strips unexpected properties. Application code must not call console directly.
+
+## Authentication and profiles
+
+- `requireUser()` verifies `getUser()` inside each protected page and mutation. The protected layout is navigation gating; it does not replace action authorization or RLS.
+- OAuth initiation is a validated Server Action; `/auth/callback` exchanges the PKCE code and verifies the user as identity/session lifecycle. It does not write business tables. OAuth destinations use the configured server-side `APP_URL` origin and the `/tasks`, `/projects`, `/settings` allowlist, never forwarded-host input.
+- Profiles are provisioned once by a private, fixed-search-path Auth trigger. Auth metadata supplies a bounded display name, never ownership or timezone. Authenticated users have own-row SELECT and column-limited UPDATE, with no INSERT/DELETE grants.
+- Timezones accept IANA names and UTC; Zod validates before actions write, and a database constraint independently checks the timezone catalog. Updating the preference does not rewrite any stored instants.
+- Browser tests provision disposable users through the public-key local Auth API, establish SSR cookies, and exercise real actions/RLS. They target only ActionDesk's local port 55321 and leave those test identities in the local database. pgTAP fixtures roll back. No service-role application path or test-login route exists.
+
+### Local Google OAuth setup and manual smoke test
+
+Provider setup follows [Supabase's Google guide](https://supabase.com/docs/guides/auth/social-login/auth-google); use ActionDesk's ports rather than the guide's default ports.
+
+1. In Google Auth Platform, configure branding/audience, add your Google account as a test user if the app is in Testing, and create a Web application OAuth client with the `openid`, email, and profile scopes.
+2. Add application origins `http://127.0.0.1:3000` (and `http://localhost:3000` if you use it). The Google authorized redirect URI is **`http://127.0.0.1:55321/auth/v1/callback`**, the Supabase Auth endpoint, not the Next.js callback.
+3. Copy `.env.example` to ignored `.env.local`. Set the local public Supabase URL/key obtained from `supabase status` and `APP_URL=http://127.0.0.1:3000`. Only public Supabase settings go in `NEXT_PUBLIC_` variables.
+4. Create ignored project-root `.env` with `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` and `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET`, as specified by [Supabase's local configuration guide](https://supabase.com/docs/guides/local-development/managing-config). In your local `supabase/config.toml`, change only `[auth.external.google] enabled` to `true`; keep credentials as `env(...)` references and `skip_nonce_check=false`. Keep this local enablement out of commits so credential-free CI continues to start.
+5. Restart only this project's local Supabase (`supabase stop`, without `--no-backup`, then `supabase start` from this repository); this preserves its local data. Do not stop unrelated stacks. Start `npm run dev`, then visit `http://127.0.0.1:3000/login` using the same hostname throughout.
+6. Continue with Google, complete consent, and confirm arrival at `/tasks`. In Settings, confirm the profile and initial `America/Los_Angeles` timezone, save `Asia/Manila`, reload to verify persistence, try an invalid zone, and sign out. Visiting `/settings` afterward must lead to login. Sign in again and confirm the saved zone was preserved rather than a profile recreated.
+
+The committed config allowlists the Next.js callback on ports 3000/3100; if using `localhost` instead of `127.0.0.1`, update `APP_URL` and the local Supabase redirect allowlist consistently. Hosted/dev-project setup uses that project's Google provider settings and Supabase Auth callback URL plus the deployed application's exact callback URL. No remote project is configured by this step.
