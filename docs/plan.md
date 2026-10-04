@@ -189,7 +189,7 @@ Implementation and evidence:
 - Browser webServer now builds with its own public local test settings before starting, so production compilation cannot bake in the fresh stack's `.env.local` URL/key while tests create users against the original stack. Test fixtures remain restricted to port 55321; manual Google app stays on 56321.
 - Vague-prompt decisions used the existing plan defaults: names 1–120 trimmed characters, optional description up to 2,000, separate active/archived lists, reversible archive, and explicit permanent-delete confirmation. No owner corrections required so far; referenced-task deletion remains a mandatory 1.7 integration check.
 
-### 1.7 Tasks CRUD and recurrence — implemented; PR preparation
+### 1.7 Tasks CRUD and recurrence — merged
 
 Owner approved the cases/defaults and both proposed dependencies before implementation. Add migration/policies, pure date logic, schemas/actions, list/detail/editor UI, and transactional completion. Project and due date optional. Render notes as text, never raw HTML; validate status transitions; confirm delete and retain drafts on error.
 
@@ -248,14 +248,34 @@ Tests/acceptance:
 - Lint, typecheck, 103 unit tests, dependency-cruiser and production build pass. Nine Chromium tests pass, including task CRUD/draft retention/plain-text rendering, finite weekly recurrence across November DST, reopen/recomplete without duplicates, actual project deletion restriction/archive choices, foreign UI/Data API/RPC denial, eight concurrent completions yielding one child, and one-off editing/status/deletion after a Pacific-to-Manila display change without moving due_at.
 - pgTAP passes 97 assertions on both original and fresh local stacks. Failure injection proves a failed successor insertion rolls back completion and its revision. Both stacks received only the new migration without resets; the fresh stack retained its three users/profiles/projects and had zero tasks after rollback-only tests. Browser fixtures run only on the original stack and retain disposable identities; successful flows delete their synthetic task/project rows.
 - Tests caught and corrected nullable recurrence timezone validation, ambiguous implicit textarea labels, save feedback lost through component remounts, malformed UNTIL dates and precise successor advancement for timestamps containing seconds. No owner corrections were needed after acceptance approval.
-- Step 1.8 remains the dedicated timezone edge-case checkpoint; baseline cases introduced here do not mark that separate step complete. Required CI and owner review/merge remain pending.
+- Step 1.8 remains the dedicated timezone edge-case checkpoint; baseline cases introduced here do not mark that separate step complete. Owner merged [PR #16](https://github.com/randygetc/codex-actiondesk/pull/16) at `08da134`, including Sunday-start correction `011a304`; required guardrails passed for that fix.
 
 
-### 1.8 Timezone edge cases — not started
+### 1.8 Timezone edge cases — verified locally; owner review pending
 
 Fixed clocks and explicit IANA zones must avoid dependence on host timezone. Required tests: 11:30pm Pacific remains Today when now is earlier that local day; weekly 9am Pacific stays 9am over November DST; Asia/Manila display change recomputes groups without moving instants; second Tuesday works across a month boundary.
 
 Add spring gap/fall overlap according to approved policy, leap day/month-end skips, exact midnight/week boundaries, overdue earlier today, null due dates, and finite-rule exhaustion. Acceptance: unit cases pass with documented local/UTC results; pgTAP and e2e prove persisted completion behavior. Ask before adding date/recurrence libraries and verify their behavior rather than assuming DST support.
+
+#### Checkpoint cases and evidence
+
+The owner clarified Sunday–Saturday task weeks after 1.7; all week-boundary checks follow that convention. Fixed input instants and explicit zones isolate calendar behavior from the machine's timezone.
+
+| Required case | Expected local/UTC result |
+| --- | --- |
+| Late Pacific due time | October 4, 2026 23:30 Pacific = October 5 06:30Z; remains Today when now is earlier October 4 Pacific |
+| Weekly 09:00 over November DST | October 25 09:00 Pacific = 16:00Z; November 1, 8 and 15 09:00 Pacific = 17:00Z |
+| Display timezone change | Pacific late-night task becomes the next calendar date in Manila and is regrouped; due instant, original recurrence anchor and captured timezone stay unchanged |
+| Second Tuesday | December 8, 2026 09:00 Pacific → January 12, 2027 09:00 Pacific (17:00Z) |
+| Spring recurrence gap | March 8, 2026 nominal 02:30 Pacific resolves to 03:30 (10:30Z); March 9 returns to original 02:30 (09:30Z) |
+| Autumn manual overlap | November 1, 2026 01:30 accepts explicit -07:00 (08:30Z) or -08:00 (09:30Z); missing/incorrect offsets reject |
+| Calendar skips and limits | Annual interval on February 29 skips non-leap years to 2028; monthly day 31 skips April; COUNT exhaustion and inclusive UTC UNTIL do not create extra occurrences |
+| Local boundaries | 23-hour/25-hour days use actual local midnight; next Sunday midnight is Later; repeated wall-clock overdue order follows instants |
+
+- Added 13 unit checkpoint cases in `src/lib/tasks/timezone.test.ts`; all 27 calendar tests pass independently with host TZ set to UTC, Asia/Manila and America/Los_Angeles.
+- Added three browser scenarios in `tests/e2e/timezone.spec.ts` that create through the UI, change profile timezone, complete through the Server Action, inspect persisted successors, exhaust COUNT and delete synthetic leaves/history through the UI. They cover weekly November DST, second Tuesday across the year boundary and a spring recurrence gap.
+- Full local unit suite: 118 tests pass. Lint, typecheck and dependency-cruiser pass. Existing pgTAP suite: 97 assertions pass on both original and fresh stacks. Production build and all 12 Chromium tests pass, including all three new persisted timezone scenarios.
+- No production logic defect found in these additional cases; no dependency, schema, committed migration or locked-file changes needed. Existing data is preserved; browser fixtures target only the original local stack and leave disposable Auth identities.
 
 ### 1.9 CI and checkpoint — not started
 
@@ -329,6 +349,6 @@ For every schema step: review ADRs and policy matrix; create a new migration wit
 
 - Completed: orientation, accepted OpenAI ADR/guardrails, owner-merged documentation/plan/CODEOWNERS, branch protection verification, approved dependencies, owner-merged scaffold with passing local and CI checks, four independent guardrail probes and local server-only build proof.
 - Owner deferred ADR 0007 until before Phase 3. Product defaults remain revisitable before their feature steps; no background-write exception has been accepted.
-- Next: review/merge the step 1.7 tasks PR after required CI, then proceed to the step 1.8 timezone edge-case checkpoint. Owner confirmed PR #15 merged; 1.7 is implemented with passing local checks and 1.8–1.9 remain unstarted. Fresh-session refusal exercise still needs evidence.
+- Next: review/merge the step 1.8 timezone edge-case PR after required CI, then proceed to step 1.9 CI and Phase 1 checks. PR #16 is owner-merged with the Sunday-start correction; 1.8 local verification is complete and 1.9 remains unstarted. Fresh-session refusal exercise still needs evidence.
 - Checks/outcomes recorded under 1.3–1.6. Google smoke test confirmed by owner; projects owner-merged and tasks implemented/tested on a feature branch. No remote deployment or paid LLM calls added. Locked paths remain unchanged on the feature branch.
 - Scaffold PR #4 is merged. Probe PRs #5–#8 are deliberately unmergeable exercises, including unexpectedly green #5. Later sessions record actual checks/outcomes and changed assumptions; never mark an unrun check passed.
