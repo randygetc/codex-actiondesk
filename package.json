@@ -17,6 +17,7 @@
     "check:architecture": "depcruise --config guardrails/dependency-cruiser.cjs src"
   },
   "dependencies": {
+    "@js-temporal/polyfill": "^0.5.1",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
     "class-variance-authority": "^0.7.1",
@@ -26,6 +27,7 @@
     "openai": "^7.27.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "rrule": "^2.8.1",
     "server-only": "^0.0.1",
     "tailwind-merge": "^3.7.0",
     "zod": "^4.6.5"

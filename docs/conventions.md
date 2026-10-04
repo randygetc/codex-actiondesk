@@ -55,3 +55,15 @@ The committed config allowlists the Next.js callback on ports 3000/3100; if usin
 - Project owner comes from verified Auth identity; column grants prevent identity/ownership/creation-time changes, and RLS protects direct Data API requests as well as actions.
 - Archive/restore changes availability for future new-task choices without deleting project history. Hard deletion requires explicit confirmation. Step 1.7 must introduce the task ownership FK with restrictive project deletion and test referenced-project rejection; no task cascade is allowed.
 - Browser tests build the production app with the same test-stack settings used at runtime. This avoids Next.js embedding the manual fresh stack's public environment settings during compilation. The manual fresh instance lives in locally ignored `.local-supabase/fresh` on ports 56320–56329; the original stack on 55320–55329 is used for disposable browser fixtures.
+
+## Tasks and recurrence
+
+- Tasks use UTC `due_at`/`completed_at`; recurring tasks retain a local anchor, captured IANA timezone and occurrence ordinal. Profile timezone changes never rewrite these fields.
+- Calendar enumeration uses `rrule` floating UTC-shaped dates only as local calendar coordinates; Temporal resolves those coordinates into actual IANA instants with explicit DST policy. Manual gaps reject and overlaps require a valid offset; recurrence gaps shift forward and overlaps use the earlier offset.
+- Guided controls serialize only the supported RRULE subset. Server parsing and a database constraint reject unsupported/duplicate clauses, invalid calendar endings and excessive interval/count inputs. COUNT includes the original task; inclusive UNTIL is UTC. Invalid month dates skip and missed dates remain scheduled.
+- Completing a task calls the user-scoped invoker `complete_task` RPC through a Server Action. The RPC locks/rechecks the row and atomically completes/inserts; a unique predecessor reference prevents duplicate children. Stale revision errors trigger bounded recalculation retries. Child metadata is derived from the locked row, never submitted by the browser.
+- Project and predecessor ownership FKs restrict hard deletion. Archived projects cannot receive new assignments; existing references can be retained and inherited. Schedule edits require explicit confirmation, and predecessor schedules remain immutable once a successor exists.
+- Explicit form labels keep accessible names stable when controlled textarea contents change. Keep form identity stable across server refreshes so save messages and invalid drafts persist.
+- Supabase's generated RPC argument types omit SQL nullability. `complete_task` accepts null for no successor; the narrow argument assertion preserves that runtime null rather than omitting the required argument.
+
+- Owner clarified that task calendar weeks start Sunday. This week ends at the next Sunday midnight in the profile timezone; dates from that boundary belong to Later. Today and Overdue retain precedence. This replaces the earlier Monday task-grouping default; the separately planned Monday digest schedule is unchanged.

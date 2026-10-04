@@ -8,7 +8,7 @@ Updated: 2026-10-04. Status: step 1.5 owner smoke-tested and merged; step 1.6 im
 - Scaffold includes tested Google OAuth, profiles/RLS, timezone settings, and owner-scoped project CRUD/archive/restore. Tasks CRUD remains unimplemented.
 - Phase 1 is detailed below; Phases 2–3 require expanded plans at their kickoff planning steps.
 - Locked architecture and accepted ADRs govern implementation. This plan does not authorize architectural exceptions, dependency installation, production commands, or edits to locked paths.
-- Owner authorized steps 1.3–1.6 and approved scaffold dependencies. Steps 1.5–1.6 add no dependencies. Google smoke test was confirmed by the owner; branch protections and required CI were verified remotely.
+- Owner authorized steps 1.3–1.7 and approved scaffold and step 1.7 date/recurrence dependencies. Steps 1.5–1.6 add no dependencies. Google smoke test was confirmed by the owner; branch protections and required CI were verified remotely.
 
 ## Invariants across all phases
 
@@ -35,7 +35,7 @@ These are proposed product defaults for review, not completed configuration.
 | Text limits | Project name 1–120, description up to 2,000; task title 1–200, notes up to 10,000 characters; trim required text | Before 1.6–1.7 |
 | Task priority | `low/normal/high/urgent`, default `normal` | Before 1.7 |
 | Due dates | Optional precise date/time; no all-day mode in Phase 1 | Before 1.7 |
-| Week and missing dates | Week begins Monday; separate No due date and Completed sections | Before 1.7 |
+| Week and missing dates | Week begins Sunday; separate No due date and Completed sections | Before 1.7 |
 | Recurrence | Daily, weekly, monthly, nth weekday; timezone captured at creation; one successor per completed occurrence | Before 1.7 |
 | Missed recurrence | Next occurrence follows previous scheduled time, preserving missed dates rather than silently skipping backlog | Before 1.7 |
 | DST | Reject nonexistent manual times; request explicit offset for ambiguous manual input. Recurrence shifts nonexistent time forward by the gap and uses earlier offset for repeated time | Before 1.7 |
@@ -189,11 +189,11 @@ Implementation and evidence:
 - Browser webServer now builds with its own public local test settings before starting, so production compilation cannot bake in the fresh stack's `.env.local` URL/key while tests create users against the original stack. Test fixtures remain restricted to port 55321; manual Google app stays on 56321.
 - Vague-prompt decisions used the existing plan defaults: names 1–120 trimmed characters, optional description up to 2,000, separate active/archived lists, reversible archive, and explicit permanent-delete confirmation. No owner corrections required so far; referenced-task deletion remains a mandatory 1.7 integration check.
 
-### 1.7 Tasks CRUD and recurrence — not started
+### 1.7 Tasks CRUD and recurrence — implemented; PR preparation
 
-Approve cases first, then add migration/policies, pure date logic, schemas/actions, list/detail/editor UI, and transactional completion. Project and due date optional. Render notes as text, never raw HTML; validate status transitions; confirm delete and retain drafts on error.
+Owner approved the cases/defaults and both proposed dependencies before implementation. Add migration/policies, pure date logic, schemas/actions, list/detail/editor UI, and transactional completion. Project and due date optional. Render notes as text, never raw HTML; validate status transitions; confirm delete and retain drafts on error.
 
-For active tasks at a single captured `now`: Overdue is due before now; Today is remaining due before next local midnight; This week is remaining due before next local Monday; Later is the rest. Separate No due date and Completed sections. Each task appears once, sorted by due instant then stable ID. Display timezone changes grouping, not stored instants.
+For active tasks at a single captured `now`: Overdue is due before now; Today is remaining due before next local midnight; This week is remaining due before next local Sunday; Later is the rest. Separate No due date and Completed sections. Each task appears once, sorted by due instant then stable ID. Display timezone changes grouping, not stored instants.
 
 Tests/acceptance:
 
@@ -203,6 +203,53 @@ Tests/acceptance:
 - Concurrent completion, double-click, response-loss retries, and reopening/recompletion cannot duplicate successors.
 - Successor failure rolls back original completion; finite/count-ended recurrence produces no extra occurrence.
 - Edits/status changes update groups; local date/time inputs round-trip to UTC correctly.
+
+#### Concrete defaults proposed for approval
+
+- Title is trimmed, 1–200 characters; notes are optional plain text up to 10,000 characters. Status is todo/doing/done; priority is low/normal/high/urgent, default normal. New tasks start todo. Project and due date are optional; recurrence requires a due date.
+- Project choices contain the owner's active projects. An existing task retains its archived project reference and can clear/change it. New assignments to archived or foreign projects fail server validation. Actual task references prevent permanent project deletion through the composite ownership FK; archiving remains available.
+- Recurrence editor supports daily, weekly on selected weekdays, monthly on a day number, and monthly on an ordinal weekday (including second Tuesday). Optional interval and finite COUNT or UTC UNTIL are supported; unsupported/duplicate clauses and incompatible combinations fail validation. Calendar-invalid dates are skipped. The first due date must match the rule and counts as occurrence one.
+- Recurrence captures the profile timezone and original local schedule anchor. Weekly 09:00 stays 09:00 across DST. Missing local recurrence times shift forward by the gap; repeated times use the earlier offset. Manual missing times fail; ambiguous manual input requires an explicit valid offset. Changing profile timezone changes display/grouping, not existing schedules or instants.
+- Completing creates only the next scheduled occurrence, even if overdue, with todo status and inherited title, notes, priority and project. COUNT is measured from the series anchor and never restarted for a successor; UNTIL is inclusive. A one-off or exhausted series has no successor.
+- Completion and successor insertion are atomic. Concurrent clicks/retries produce one successor. Reopening clears completed_at and recompleting reuses the successor. A completed predecessor with a successor cannot be deleted or have its schedule changed; deleting other occurrences does not delete other tasks. Content edits affect only subsequently created occurrences. Schedule changes on an active occurrence begin a new series and must be explicit in the editor.
+- Grouping captures one current instant and uses Sunday week boundaries: Overdue, Today, This week, Later, No due date, Completed. Earlier-today tasks are Overdue; completed tasks are excluded from active groups.
+
+#### Acceptance cases to implement first
+
+| Case | Expected result and protection |
+| --- | --- |
+| Own CRUD, optional dates/project, invalid drafts | Create/read/edit/confirmed-delete works; invalid drafts survive; plain notes render escaped; malformed values do not write |
+| Two users and anonymous client | RLS denies foreign reads/writes, forged owner and foreign project assignment; actions independently authenticate with getUser |
+| Archived/referenced projects | Archived projects cannot receive new assignments; existing references remain visible; referenced project deletion fails without losing tasks |
+| One-off and recurring completion | completed_at matches done state; one-off has no child; recurring child inherits reviewed fields and is todo |
+| Race/retry/reopen | Concurrent database calls, response-loss retry and reopening/recompletion leave exactly one successor |
+| Failed successor or stale schedule | Entire completion rolls back on insertion failure; changed schedule is detected under the row lock and recalculated rather than using stale input |
+| Finite and calendar rules | COUNT=2 creates exactly two total occurrences; UNTIL boundary is inclusive; second Tuesday crosses months; day 31 skips invalid months |
+| Local/UTC conversion | Manual DST gap rejects and overlap requires offset; recurrence follows gap/overlap policy; weekly Pacific 09:00 remains 09:00 across November |
+| Group boundaries | Pacific 23:30 is Today when now is earlier that day; earlier-today is Overdue; midnight/Sunday boundaries and null dates classify once |
+| Timezone change | Pacific to Asia/Manila changes displayed dates/groups without changing due_at or recurrence timezone |
+
+#### Implementation and verification sequence
+
+1. Obtain approval of these cases/defaults and dependency additions. Proposed dependencies: [`@js-temporal/polyfill`](https://github.com/js-temporal/temporal-polyfill) for explicit timezone/DST conversion and [`rrule`](https://github.com/jkbrzt/rrule) for calendar recurrence enumeration. Verify installed versions, parsing, floating-date semantics and bounds before relying on them; resolve IANA offsets explicitly rather than assuming enumeration preserves DST.
+2. Add fixed-clock unit cases and pure task grouping/recurrence modules with bounded rule parsing and enumeration. No dependence on the host timezone.
+3. Add a new tasks migration with constraints, same-migration owner RLS, column-limited grants, composite project ownership FK with deletion restriction, recurrence anchor/timezone/ordinal and unique predecessor identity. Add an invoker completion operation that locks the owned row and atomically completes/inserts. Validate caller inputs, ownership and schedule revision; derive successor metadata from the locked record. No privileged client or security-definer business mutation.
+4. Add pgTAP ownership/constraint/atomicity/replay cases and a separate concurrent completion check. Generate database types; apply only the new migration to both local stacks without resets or deleting existing data.
+5. Add Zod schemas, authenticated Server Actions, task list/detail/editor, recurrence controls, explicit ambiguous-time handling, loading/error states and confirmed deletion. Keep business writes in actions using the user's client.
+6. Add browser CRUD/project/recurrence and two-user denial cases. Run lint, typecheck, unit, dependency-cruiser, pgTAP, concurrent completion, production build and Chromium checks. Record actual outcomes; commit/push the implementation branch and open a PR for owner review. Do not merge.
+
+#### Implementation outcome
+
+- Owner approved this acceptance plan and `@js-temporal/polyfill`/`rrule`. Installed versions are 0.5.1 and 2.8.1; production dependency audit reports zero vulnerabilities. The previously recorded development lint dependency advisory remains unchanged.
+- New append-only migration `20261004050000_tasks.sql` creates owner-scoped tasks, same-migration RLS, all four CRUD policies, column-limited grants, immutable identity/ownership/predecessor, composite restrictive project/predecessor FKs, validated recurrence clauses, schedule context, status/completion consistency, finite timestamps, revision tracking and unique successor identity. No committed migration or locked path was edited.
+- `complete_task` is a fixed-search-path invoker RPC through an authenticated, Zod-validated Server Action. It locks/rechecks the owned task, detects stale revisions, derives successor metadata from that row, applies RLS and atomically completes/inserts. Retries/reopening reuse an existing successor. Database checks reject nonadvancing dates and COUNT/UNTIL overflow; the pure server calendar module calculates the exact next supported occurrence.
+- Task list/detail/editor supports optional project/date, escaped notes, priorities, status changes, retained invalid drafts, confirmed deletion and six timezone-aware groups. Guided recurrence controls support daily/weekly/monthly dates/ordinal weekdays, intervals 1–365, COUNT 1–1,000 or inclusive UTC UNTIL. Infinite schedules are not capped at 1,000 occurrences; production successor lookup advances from the persisted due date while retaining the original anchor.
+- Archived projects are excluded from new-task choices, existing references remain editable and can be inherited by recurrence, and actual task FKs block project deletion. Schedule edits require explicit confirmation and cannot rewrite a predecessor that already has a successor.
+- Lint, typecheck, 103 unit tests, dependency-cruiser and production build pass. Nine Chromium tests pass, including task CRUD/draft retention/plain-text rendering, finite weekly recurrence across November DST, reopen/recomplete without duplicates, actual project deletion restriction/archive choices, foreign UI/Data API/RPC denial, eight concurrent completions yielding one child, and one-off editing/status/deletion after a Pacific-to-Manila display change without moving due_at.
+- pgTAP passes 97 assertions on both original and fresh local stacks. Failure injection proves a failed successor insertion rolls back completion and its revision. Both stacks received only the new migration without resets; the fresh stack retained its three users/profiles/projects and had zero tasks after rollback-only tests. Browser fixtures run only on the original stack and retain disposable identities; successful flows delete their synthetic task/project rows.
+- Tests caught and corrected nullable recurrence timezone validation, ambiguous implicit textarea labels, save feedback lost through component remounts, malformed UNTIL dates and precise successor advancement for timestamps containing seconds. No owner corrections were needed after acceptance approval.
+- Step 1.8 remains the dedicated timezone edge-case checkpoint; baseline cases introduced here do not mark that separate step complete. Required CI and owner review/merge remain pending.
+
 
 ### 1.8 Timezone edge cases — not started
 
@@ -282,6 +329,6 @@ For every schema step: review ADRs and policy matrix; create a new migration wit
 
 - Completed: orientation, accepted OpenAI ADR/guardrails, owner-merged documentation/plan/CODEOWNERS, branch protection verification, approved dependencies, owner-merged scaffold with passing local and CI checks, four independent guardrail probes and local server-only build proof.
 - Owner deferred ADR 0007 until before Phase 3. Product defaults remain revisitable before their feature steps; no background-write exception has been accepted.
-- Next: review/merge step 1.6 after required CI, then plan task/recurrence acceptance cases for 1.7. Steps 1.7–1.9 remain unstarted; fresh-session refusal exercise still needs evidence.
-- Checks/outcomes recorded under 1.3–1.6. Google smoke test confirmed by owner; projects implemented and tested on a feature branch. No tasks, remote deployment, or paid LLM calls added. Locked paths remain unchanged on the feature branch.
+- Next: review/merge the step 1.7 tasks PR after required CI, then proceed to the step 1.8 timezone edge-case checkpoint. Owner confirmed PR #15 merged; 1.7 is implemented with passing local checks and 1.8–1.9 remain unstarted. Fresh-session refusal exercise still needs evidence.
+- Checks/outcomes recorded under 1.3–1.6. Google smoke test confirmed by owner; projects owner-merged and tasks implemented/tested on a feature branch. No remote deployment or paid LLM calls added. Locked paths remain unchanged on the feature branch.
 - Scaffold PR #4 is merged. Probe PRs #5–#8 are deliberately unmergeable exercises, including unexpectedly green #5. Later sessions record actual checks/outcomes and changed assumptions; never mark an unrun check passed.
