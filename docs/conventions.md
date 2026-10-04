@@ -67,3 +67,10 @@ The committed config allowlists the Next.js callback on ports 3000/3100; if usin
 - Supabase's generated RPC argument types omit SQL nullability. `complete_task` accepts null for no successor; the narrow argument assertion preserves that runtime null rather than omitting the required argument.
 
 - Owner clarified that task calendar weeks start Sunday. This week ends at the next Sunday midnight in the profile timezone; dates from that boundary belong to Later. Today and Overdue retain precedence. This replaces the earlier Monday task-grouping default; the separately planned Monday digest schedule is unchanged.
+
+## Application CI
+
+- Application `ci` is separate from locked `guardrails`, runs on pull requests and main pushes, and uses only local Supabase public test settings. The owner adds it as a required main check after it passes reliably.
+- Node follows `.nvmrc`; Supabase CLI 2.118.0 is pinned for reproducible database declarations. Run `node scripts/check-db-types.mjs` against the original local stack to detect schema/type drift without rewriting files.
+- Capture Supabase start/status output because it contains local privileged credentials. `node scripts/start-test-supabase.mjs` exports only local public settings through GITHUB_ENV on CI and masks the key. Its local invocation preserves existing databases and never stops them.
+- Production browser compilation and runtime use the same test-stack settings. CI uses one worker and disables traces; no browser artifacts are uploaded. This follows [Playwright CI guidance](https://playwright.dev/docs/ci) while avoiding session-cookie artifacts. Fresh-run database checks follow [Supabase CI testing guidance](https://supabase.com/docs/guides/deployment/ci/testing).
