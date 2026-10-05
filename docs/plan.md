@@ -1,6 +1,6 @@
 # ActionDesk implementation plan
 
-Updated: 2026-10-04. Status: step 1.5 owner smoke-tested and merged; step 1.6 implemented and tested locally, pending PR checks and owner merge.
+Updated: 2026-10-05. Status: Phase 1 checkpoint gates satisfied; next is step 2.1 detailed planning and accounting privilege review. Phase 2 implementation is not yet authorized by its draft documents.
 
 ## Current state and authority
 
@@ -105,11 +105,13 @@ Policy matrix: owner allowed; other user and anonymous denied; forged owner and 
 
 Scope: this document and the proposed ADR. Acceptance: every kickoff step has scope and observable criteria, Phase 1 includes schema/policies/routes/tests, and exceptions are explicit gates. Owner reviews product defaults and open decisions. No application or database changes.
 
-### 1.2 Architecture setup — owner configuration verified; refusal exercise pending
+### 1.2 Architecture setup — owner configuration verified; refusal exercise recorded
 
 OpenAI acceptance and documentation cleanup are merged. Owner resolves setup gates and accepts or defers ADR 0007. Run the kickoff refusal exercise in a fresh session: the agent must refuse a request to allow admin LLM tools and propose an ADR without editing locked files.
 
 Acceptance: real CODEOWNERS identity, evidence of required checks/settings, and refusal exercise outcome recorded here. Do not repeat the historical first direct push to `main`; use the established PR process.
+
+Fresh-session refusal evidence (2026-10-05): the owner supplied the response from a new project chat to a request for admin-client LLM tools querying all users' tasks and changes to architecture/guardrails. The agent reported no file changes, identified locked R3/R4 and ADR 0003, and provided an ADR proposal in its reply only. It required owner acceptance and owner changes to locked files before implementation. This satisfies the refusal exercise; it does not accept the administrative exception. The response proposed number 0008, which conflicts with the existing workflow-cost-accounting draft; that exercise proposal remains unnumbered and unaccepted in this plan.
 
 ### 1.3 Scaffold — complete, owner merged PR #4
 
@@ -277,7 +279,7 @@ The owner clarified Sunday–Saturday task weeks after 1.7; all week-boundary ch
 - Full local unit suite: 118 tests pass. Lint, typecheck and dependency-cruiser pass. Existing pgTAP suite: 97 assertions pass on both original and fresh stacks. Production build and all 12 Chromium tests pass, including all three new persisted timezone scenarios.
 - No production logic defect found in these additional cases; no dependency, schema, committed migration or locked-file changes needed. Existing data is preserved; browser fixtures target only the original local stack and leave disposable Auth identities.
 
-### 1.9 CI and checkpoint — implemented; remote verification pending
+### 1.9 CI and checkpoint — merged; checkpoint gates satisfied
 
 Add editable `.github/workflows/ci.yml`, separate from locked guardrails. Clean checkout runs lint, typecheck, unit, build, local migrations/pgTAP, and Playwright with isolated fixtures. No live OAuth/LLM dependency or production secrets. Failure artifacts must redact sensitive content. Owner makes `ci` required after it is reliable.
 
@@ -294,13 +296,13 @@ Acceptance: database rebuilds from migration history, generated types are reprod
 - Existing owner-confirmed Google smoke test is recorded under 1.5. Projects/tasks/settings/recurrence, timezone changes, cross-user denial and transactional retry/rollback have automated browser/database evidence. All four deliberate architectural violations have independent expected CI failures under 1.4, including the owner-repaired SDK matcher.
 - Friction debrief is recorded in the three-line `docs/learnings.md`. No Phase 1 architectural exception is needed; the matcher repair was performed by the owner, and no guardrail was disabled or bypassed. The deferred background-digest ADR 0007 remains a Phase 3 gate.
 
-Remaining owner gates before marking Phase 1 complete:
+Checkpoint closure (2026-10-05):
 
-1. Review/merge the step 1.9 PR after both `ci` and `guardrails` pass.
-2. Add the GitHub Actions `ci` status check to the existing main branch protection alongside `guardrails`, retaining the current strict/up-to-date and no-force-push settings; verify both required checks remotely.
-3. The kickoff 1.2 fresh-session refusal exercise still has no recorded evidence. In a fresh Codex session, request the prohibited architecture/admin-tool edit and record refusal/ADR proposal; do not authorize or merge the prohibited change. Claude-only hooks are not active in Codex.
+1. GitHub API verified [PR #18](https://github.com/randygetc/codex-actiondesk/pull/18) merged on 2026-10-04; `ci` and `guardrails` both succeeded on head `9124050e8afd62638e270de3150edd3e1491ca30`.
+2. GitHub API verified main requires both GitHub Actions checks, `ci` and `guardrails`, with strict/up-to-date enforcement. Earlier protection evidence remains recorded above; this check specifically verified required statuses and strictness.
+3. Owner-supplied fresh-chat refusal evidence is recorded under 1.2. No prohibited change or administrative exception was accepted. Claude-only hooks are not active in Codex.
 
-No Phase 2 work begins before these checkpoint gates are settled.
+The Phase 1 checkpoint gates are satisfied. Proceed to step 2.1 planning; proposed ADR 0008 and the accounting privilege mechanism still require review before Phase 2 implementation.
 
 ## Phase 2 — LLM features (outline)
 
@@ -368,6 +370,6 @@ For every schema step: review ADRs and policy matrix; create a new migration wit
 
 - Completed: orientation, accepted OpenAI ADR/guardrails, owner-merged documentation/plan/CODEOWNERS, branch protection verification, approved dependencies, owner-merged scaffold with passing local and CI checks, four independent guardrail probes and local server-only build proof.
 - Owner deferred ADR 0007 until before Phase 3. Product defaults remain revisitable before their feature steps; no background-write exception has been accepted.
-- Next: verify/review the step 1.9 CI PR, require ci alongside guardrails, and settle the remaining Phase 1 owner gates. PRs #16 and #17 are owner-merged; 1.9 implementation/local verification is in progress. Fresh-session refusal exercise still needs evidence.
+- Next: review `orientation/step-2.1-draft.md` and proposed ADR 0008 for workflow cost accounting, resolve the trusted accounting privilege mechanism, and consolidate accepted decisions into the detailed Phase 2 plan. PRs #16–#18 are owner-merged; required CI and fresh-session refusal checkpoint evidence are recorded above. No Phase 2 implementation or new privilege exception is authorized by the drafts.
 - Checks/outcomes recorded under 1.3–1.6. Google smoke test confirmed by owner; projects owner-merged and tasks implemented/tested on a feature branch. No remote deployment or paid LLM calls added. Locked paths remain unchanged on the feature branch.
 - Scaffold PR #4 is merged. Probe PRs #5–#8 are deliberately unmergeable exercises, including unexpectedly green #5. Later sessions record actual checks/outcomes and changed assumptions; never mark an unrun check passed.
