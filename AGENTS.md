@@ -1,3 +1,14 @@
+# ActionDesk repository instructions
+
+Before making changes, read [CLAUDE.md](CLAUDE.md) and follow its repository
+governance and working rules. These rules apply to Codex as well as Claude Code.
+Read its referenced documents, `docs/architecture.md` and `docs/conventions.md`,
+and read `docs/plan.md` at the start of each session.
+
+For architecture or locked-path changes, follow the owner-controlled ADR process
+in those documents. When `/propose-adr` is unavailable, read
+`.claude/commands/propose-adr.md` and provide the proposal in your reply only.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
